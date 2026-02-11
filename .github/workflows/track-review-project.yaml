@@ -70,13 +70,11 @@ jobs:
 
       - name: Extract PR Data
         run: |
-          unzip context.zip
-          pr_num=$(jq -r '.pr_num' context.json)
-          pr_id=$(jq -r '.pr_id' context.json)
-          echo "PR_NUM=$pr_num" >> $GITHUB_ENV
-          echo "PR_ID=$pr_id" >> $GITHUB_ENV
+          unzip -q context.zip
+          jq -r '"PR_NUM=\(.pr_num)\nPR_ID=\(.pr_id)"' context.json >> $GITHUB_ENV
 
       - name: Assign Author if no assignees
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -111,10 +109,13 @@ jobs:
           sr_approved=$(echo "$reviews" | jq --arg sr "$scitech_reviewer" '[.reviews[] | select(.author.login == $sr and .state == "APPROVED")] | length')
           sr_changes=$(echo "$reviews" | jq --arg sr "$scitech_reviewer" '[.reviews[] | select(.author.login == $sr and (.state == "CHANGES_REQUESTED" or .state == "COMMENTED"))] | length')
 
+          cr_approved=$(echo "$reviews" | jq --arg cr "$code_reviewer" '[.reviews[] | select(.author.login == $cr and .state == "APPROVED")] | length')
+          cr_changes=$(echo "$reviews" | jq --arg cr "$code_reviewer" '[.reviews[] | select(.author.login == $cr and (.state == "CHANGES_REQUESTED" or .state == "COMMENTED"))] | length')
+
           [[ ! -z "$scitech_reviewer" ]] && [[ "$sr_requested" -eq 0 ]] && [[ "$sr_approved" -eq 0 ]] && [[ "$sr_changes" -eq 0 ]] && echo "SR_REQUEST_REQUIRED=true" >> $GITHUB_ENV
 
-          if [[ -z "$scitech_reviewer" ]] && [[ "$cr_requested" -gt 0 ]]; then
-            echo "No SR set and CR requested so assuming this is trivial"
+          if [[ -z "$scitech_reviewer" ]] && [[ "$cr_requested" -gt 0 || "$cr_approved" -gt 0 || "$cr_changes" -gt 0 ]]; then
+            echo "No SR set and CR in progress so assuming this is trivial"
           else
             if [[ "$sr_approved" -eq 0 ]]; then
               if [[ -z "$scitech_reviewer" ]] && [[ "$sr_changes" -eq 0 ]]; then
@@ -129,8 +130,7 @@ jobs:
             fi
           fi
 
-          cr_approved=$(echo "$reviews" | jq --arg cr "$code_reviewer" '[.reviews[] | select(.author.login == $cr and .state == "APPROVED")] | length')
-          cr_changes=$(echo "$reviews" | jq --arg cr "$code_reviewer" '[.reviews[] | select(.author.login == $cr and (.state == "CHANGES_REQUESTED" or .state == "COMMENTED"))] | length')
+          # SR complete or trivial PR so move to code review states
 
           if [[ "$cr_approved" -gt 0 ]]; then
             required_state="Approved"
@@ -147,13 +147,14 @@ jobs:
 
       - name: Request SciTech review, if needed
         if: env.SR_REQUEST_REQUIRED == 'true' && env.REQUIRED_STATE == 'SciTech Review' && env.SCITECH_REVIEWER != ''
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh pr edit -R "$REPO" "$PR_NUM" --add-reviewer "$SCITECH_REVIEWER"
+        run: gh pr edit -R "$REPO" "$PR_NUM" --add-reviewer "$SCITECH_REVIEWER"
 
       - name: Request code review, if needed
         if: env.CR_REQUEST_REQUIRED == 'true' && env.REQUIRED_STATE == 'Code Review' && env.CODE_REVIEWER != ''
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
