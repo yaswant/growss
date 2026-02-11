@@ -88,7 +88,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          pr_data=$(gh pr view -R "$REPO" "$PR_NUM" --json body,reviews,reviewRequests)
+          pr_data=$(gh pr view -R "$REPO" "$PR_NUM" --json body,reviews,reviewRequests,state)
 
           # Extract reviewers from PR body
           pr_body=$(echo "$pr_data" | jq -r '.body')
@@ -99,6 +99,16 @@ jobs:
           echo "Expected Code Reviewer: ${code_reviewer:-None}"
           echo "SCITECH_REVIEWER=$scitech_reviewer" >> $GITHUB_ENV
           echo "CODE_REVIEWER=$code_reviewer" >> $GITHUB_ENV
+
+          # If the PR isn't OPEN then required project state is "Done"
+          # This marks the PR as Done whether it has been merged or not
+          # Draft PRs have an OPEN state
+          state=$(echo "$pr_data" | jq -r '.state')
+          if [[ "$state" != "OPEN" ]]; then
+            required_state="Done"
+            echo "REQUIRED_STATE=$required_state" >> $GITHUB_ENV
+            exit 0
+          fi
 
           # Determine review state
           reviews=$(echo "$pr_data" | jq -c '{reviews, reviewRequests}')
