@@ -37,8 +37,8 @@ jobs:
         id: validate_author
         run: |
           AUTHOR="${{ github.event.pull_request.user.login }}"
-          # GitHub usernames: alphanumeric + hyphen, 1-39 chars, cannot start/end with hyphen
-          # Cannot contain consecutive hyphens
+          # GitHub usernames: alphanumeric + hyphen, 1-39 chars,
+          # cannot start/end with hyphen, cannot contain consecutive hyphens
           if [[ ! "$AUTHOR" =~ ^[a-zA-Z0-9]([a-zA-Z0-9]|-[a-zA-Z0-9]){0,37}[a-zA-Z0-9]?$ ]]; then
             echo "::error::Invalid GitHub username format detected: $AUTHOR"
             echo "This may indicate a security issue or data integrity problem."
@@ -51,10 +51,8 @@ jobs:
         id: check_contributor_base
         working-directory: ./base_branch
         run: |
-          # AUTHOR="${{ github.event.pull_request.user.login }}"
           AUTHOR="${{ steps.validate_author.outputs.validated_author }}"
           if [ -f "CONTRIBUTORS.md" ]; then
-            # if grep -qE "\|\s*$AUTHOR\s*\|" CONTRIBUTORS.md; then
             if grep -qP "^\s*\|\s*\Q$AUTHOR\E\s*\|" CONTRIBUTORS.md; then
               echo "on_base=true" >> $GITHUB_OUTPUT
               echo "🎉 $AUTHOR has already signed the CLA on base branch."
@@ -79,7 +77,6 @@ jobs:
         id: check_contributor_pr
         working-directory: pr_branch
         run: |
-          # AUTHOR="${{ github.event.pull_request.user.login }}"
           AUTHOR="${{ steps.validate_author.outputs.validated_author }}"
           if [ -f "CONTRIBUTORS.md" ]; then
             # if grep -qE "\|\s*$AUTHOR\s*\|" CONTRIBUTORS.md; then
@@ -299,7 +296,8 @@ jobs:
               console.log('✅ New contributor has signed the CLA in PR branch.');
               await Promise.allSettled([
                 github.rest.issues.removeLabel({ owner, repo, issue_number, name: 'cla-required' }),
-                github.rest.issues.removeLabel({ owner, repo, issue_number, name: 'cla-modified' })
+                github.rest.issues.removeLabel({ owner, repo, issue_number, name: 'cla-modified' }),
+                github.rest.issues.addLabels({ owner, repo, issue_number, labels: ['cla-signed'] })
               ]);
 
               // Delete old CLA comments since CLA is now signed

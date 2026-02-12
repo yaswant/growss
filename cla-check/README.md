@@ -10,7 +10,7 @@ Contributor License Agreement (CLA) by checking their presence in the
 - 🏷️ Manages PR labels (`cla-signed`, `cla-required`, `cla-modified`)
 - 💬 Posts helpful comments guiding contributors through the CLA process
 - 🔄 Validates both base and PR branches for existing signatures
-- 🛡️ Prevents unauthorized modifications to the `CONTRIBUTORS.md` file
+- 🛡️ Prevents unauthorised modifications to the `CONTRIBUTORS.md` file
 
 ## Usage
 
