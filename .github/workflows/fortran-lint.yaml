@@ -45,7 +45,7 @@ jobs:
 
       - name: Run Fortitude Linter
         run: |
-          uvx --with fortitude-lint==0.7.3 fortitude check \
+          uvx --from fortitude-lint==0.7.3 fortitude check \
             --respect-gitignore \
             --show-fixes \
             --statistics \
