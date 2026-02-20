@@ -16,6 +16,17 @@ that performs Fortran code linting using the
 
 ### Basic Usage
 
+This section provides instructions on how to use the fortran-lint tool in its
+most common scenarios. The basic workflow includes running the linter on Fortran
+source files to check for style violations, code quality issues, and potential
+errors.
+
+The `paths` filter ensures the workflow only runs when Fortran files (with
+`.f90` or `.F90` extensions) are modified in pull requests, avoiding unnecessary
+checks when other file types are changed. If paths filters are omitted, then
+default `file-extensions` are used instead (see
+[Input Parameters](#input-parameters)).
+
 ```yaml
 name: Lint Fortran Code
 on:
@@ -33,6 +44,12 @@ jobs:
 ```
 
 ### Advanced Usage
+
+This section covers advanced configuration options and usage patterns for the
+Fortran linting tool. It provides detailed examples and explanations for users
+who need to customize the linting behavior beyond the basic setup, including
+custom rule configurations, integration with CI/CD pipelines, and handling
+complex project structures.
 
 ```yaml
 name: Custom Fortran Lint
