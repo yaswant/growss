@@ -1,7 +1,8 @@
 # Fortran Lint Workflow
 
-A reusable GitHub Actions workflow that performs Fortran code linting using the
-Fortitude linter.
+A reusable GitHub Actions [workflow](../.github/workflows/fortran-lint.yaml)
+that performs Fortran code linting using the
+[Fortitude](https://github.com/PlasmaFAIR/fortitude) linter.
 
 ## Features
 
