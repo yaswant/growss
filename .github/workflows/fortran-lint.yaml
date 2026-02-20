@@ -43,8 +43,11 @@ jobs:
           python-version: ${{ env.UV_PYTHON }}
           enable-cache: false
 
-      - name: Install fortitude-lint
-        run: uv pip install fortitude-lint==0.7.3
-
       - name: Run Fortitude Linter
-        run: uv run fortitude check --respect-gitignore --show-fixes --file-extensions=f90,F90,x90,X90,t90,T90,pf .
+        run: |
+          uvx --with fortitude-lint==0.7.3 fortitude check \
+            --respect-gitignore \
+            --show-fixes \
+            --statistics \
+            --file-extensions=f90,F90,x90,X90,t90,T90,pf,PF\
+            .

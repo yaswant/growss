@@ -30,7 +30,7 @@ as a YAML file in your `.github/workflows` directory containing the follwing:
 ```yaml
 steps:
   - name: Lint Fortran
-    uses: MetOffice/growss/.github/workflows/fortan-lint.yaml@main
+    uses: MetOffice/growss/.github/workflows/fortran-lint.yaml@main
 
     with:
       runner: The runner to use for the job (ubuntu-latest)
