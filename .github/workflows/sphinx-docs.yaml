@@ -205,8 +205,6 @@ jobs:
 
       - name: Install dependencies from conf.py (extensions + html_theme)
         if: ${{ steps.detect-deps.outputs.source == 'conf' }}
-        env:
-          UV_PYTHON: ${{ env.PYTHON_VRSN }}
         run: |
           PACKAGES=$(python3 - <<'EOF'
           import ast
@@ -303,8 +301,9 @@ jobs:
 
           print(" ".join(sorted(pkgs)))
           EOF
-          )
-          uv pip install $PACKAGES
+          # Create a venv using the uv-managed Python and install into it.
+          uv venv ${{ env.VENV_PATH }}
+          uv pip install --python ${{ env.VENV_PATH }}/bin/python $PACKAGES
 
       - name: Install dependencies via uv sync (docs pyproject.toml)
         if: ${{ steps.detect-deps.outputs.source == 'pyproject-docs' }}
