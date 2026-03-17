@@ -322,7 +322,7 @@ jobs:
         run: uv sync ${{ steps.uv-flags.outputs.flags }}
 
       - name: Lint Sphinx docs
-        run: uv run sphinx-lint ${{ inputs.source-dir }}
+        run: ${{ env.VENV_PATH }}/bin/sphinx-lint ${{ inputs.source-dir }}
 
       - name: Detect Makefile in docs directory
         id: detect-makefile
@@ -336,12 +336,12 @@ jobs:
       - name: Build HTML docs (make)
         if: ${{ steps.detect-makefile.outputs.found == 'true' }}
         working-directory: ${{ inputs.docs-dir }}
-        run: uv run make clean html BUILDDIR="${{ inputs.build-dir }}"
+        run: ${{ env.VENV_PATH }}/bin/make clean html BUILDDIR="${{ inputs.build-dir }}"
 
       - name: Build HTML docs (sphinx-build)
         if: ${{ steps.detect-makefile.outputs.found == 'false' }}
         run: |
-          uv run sphinx-build \
+          ${{ env.VENV_PATH }}/bin/sphinx-build \
             --builder html \
             --fresh-env \
             --write-all \
