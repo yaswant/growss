@@ -56,6 +56,28 @@ on:
         required: false
         type: string
         default: '_build'
+      use-pyproject:
+        description: >
+          Override automatic dependency resolution and force the use of
+          pyproject.toml instead of conf.py. The workflow will search for
+          pyproject.toml in docs-dir, source-dir, then repo root (in that
+          order). Takes precedence over conf.py when set to true.
+        required: false
+        type: boolean
+        default: false
+      extras:
+        description: >
+          Optional dependency group to install from pyproject.toml when
+          use-pyproject is true or when falling back to pyproject.toml.
+          Corresponds to a key under [project.optional-dependencies] or a
+          [dependency-groups] group (PEP 735). e.g. "docs" installs the
+          extras defined under [project.optional-dependencies] docs = [...]
+          via "uv sync --extra docs", or a dependency group via
+          "uv sync --group docs".
+          Leave empty to run plain "uv sync".
+        required: false
+        type: string
+        default: ''
     outputs:
       pages-url:
         description: 'URL of the deployed GitHub Pages site'
@@ -75,6 +97,15 @@ jobs:
     env:
       PYTHON_VRSN: ${{ inputs.python-version }}
       VENV_PATH: ${{ inputs.venv-path }}
+      # Deploy only when: caller opted in AND we are on the upstream main branch
+      # (not a fork's main, not a PR, not any other branch)
+      DO_DEPLOY: >-
+        ${{
+          inputs.deploy
+          && github.ref == 'refs/heads/main'
+          && github.repository == github.event.repository.full_name
+          && github.event_name != 'pull_request'
+        }}
 
     steps:
       - name: Checkout repository
@@ -85,25 +116,86 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VRSN }}
 
-      - name: Detect pyproject.toml location
-        id: detect-pyproject
+      - name: Detect dependency source
+        id: detect-deps
         run: |
-          if [ -f "pyproject.toml" ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-            echo "location=root" >> "$GITHUB_OUTPUT"
+          # When use-pyproject is true, skip conf.py entirely and go straight
+          # to pyproject.toml resolution
+          if [ "${{ inputs.use-pyproject }}" = "true" ]; then
+            if [ -f "${{ inputs.docs-dir }}/pyproject.toml" ]; then
+              echo "source=pyproject-docs" >> "$GITHUB_OUTPUT"
+            elif [ -f "${{ inputs.source-dir }}/pyproject.toml" ]; then
+              echo "source=pyproject-source" >> "$GITHUB_OUTPUT"
+            elif [ -f "pyproject.toml" ]; then
+              echo "source=pyproject-root" >> "$GITHUB_OUTPUT"
+            else
+              echo "::error::use-pyproject is true but no pyproject.toml found in docs-dir, source-dir, or repo root."
+              exit 1
+            fi
+
+          # Default auto-detection: conf.py has highest priority
+          elif [ -f "${{ inputs.source-dir }}/conf.py" ]; then
+            echo "source=conf" >> "$GITHUB_OUTPUT"
           elif [ -f "${{ inputs.docs-dir }}/pyproject.toml" ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-            echo "location=docs" >> "$GITHUB_OUTPUT"
+            echo "source=pyproject-docs" >> "$GITHUB_OUTPUT"
           elif [ -f "${{ inputs.source-dir }}/pyproject.toml" ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-            echo "location=source" >> "$GITHUB_OUTPUT"
+            echo "source=pyproject-source" >> "$GITHUB_OUTPUT"
+          elif [ -f "pyproject.toml" ]; then
+            echo "source=pyproject-root" >> "$GITHUB_OUTPUT"
           else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "location=none" >> "$GITHUB_OUTPUT"
+            echo "::error::No conf.py or pyproject.toml found. Cannot resolve dependencies."
+            exit 1
           fi
 
+      - name: Resolve uv sync flags
+        id: uv-flags
+        if: ${{ steps.detect-deps.outputs.source != 'conf' }}
+        run: |
+          # Determine whether `extras` refers to an optional-dependency extra
+          # or a dependency-group, then set the appropriate uv sync flag.
+          EXTRAS="${{ inputs.extras }}"
+          if [ -z "$EXTRAS" ]; then
+            echo "flags=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Locate the relevant pyproject.toml
+          case "${{ steps.detect-deps.outputs.source }}" in
+            pyproject-docs)   PYPROJECT="${{ inputs.docs-dir }}/pyproject.toml" ;;
+            pyproject-source) PYPROJECT="${{ inputs.source-dir }}/pyproject.toml" ;;
+            *)                PYPROJECT="pyproject.toml" ;;
+          esac
+
+          # Inspect pyproject.toml to determine the correct flag
+          FLAGS=$(python3 - <<EOF
+          import sys
+          try:
+              import tomllib
+          except ImportError:
+              import tomli as tomllib  # Python < 3.11 fallback
+
+          with open("$PYPROJECT", "rb") as f:
+              data = tomllib.load(f)
+
+          extras = "$EXTRAS"
+          # Check [project.optional-dependencies]
+          opt_deps = data.get("project", {}).get("optional-dependencies", {})
+          # Check [dependency-groups] (PEP 735)
+          dep_groups = data.get("dependency-groups", {})
+
+          if extras in opt_deps:
+              print(f"--extra {extras}")
+          elif extras in dep_groups:
+              print(f"--group {extras}")
+          else:
+              print(f"::warning::'{extras}' not found in optional-dependencies or dependency-groups. Running plain uv sync.", file=sys.stderr)
+              print("")
+          EOF
+          )
+          echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
+
       - name: Cache uv venv
-        if: ${{ steps.detect-pyproject.outputs.found == 'true' }}
+        if: ${{ steps.detect-deps.outputs.source != 'conf' }}
         uses: actions/cache@v5
         with:
           path: ${{ env.VENV_PATH }}
@@ -111,32 +203,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ env.PYTHON_VRSN }}-
 
-      - name: Install dependencies via uv sync (root pyproject.toml)
-        if: ${{ steps.detect-pyproject.outputs.location == 'root' }}
-        run: uv sync
-
-      - name: Install dependencies via uv sync (docs pyproject.toml)
-        if: ${{ steps.detect-pyproject.outputs.location == 'docs' }}
-        working-directory: ${{ inputs.docs-dir }}
-        run: uv sync
-
-      - name: Install dependencies via uv sync (source pyproject.toml)
-        if: ${{ steps.detect-pyproject.outputs.location == 'source' }}
-        working-directory: ${{ inputs.source-dir }}
-        run: uv sync
-
-      - name: Extract Sphinx extensions from conf.py
-        if: ${{ steps.detect-pyproject.outputs.found == 'false' }}
-        id: extract-extensions
+      - name: Install dependencies from conf.py (extensions + html_theme)
+        if: ${{ steps.detect-deps.outputs.source == 'conf' }}
         run: |
           CONF_FILE="${{ inputs.source-dir }}/conf.py"
-          if [ ! -f "$CONF_FILE" ]; then
-            echo "Error: conf.py not found at $CONF_FILE" >&2
-            exit 1
-          fi
-          # Extract extensions list from conf.py and map to PyPI packages
-          EXTENSIONS=$(python3 - <<'EOF'
-          import ast, sys
+          PACKAGES=$(python3 - <<'EOF'
+          import ast
 
           conf_path = "${{ inputs.source-dir }}/conf.py"
           with open(conf_path) as f:
@@ -144,80 +216,108 @@ jobs:
 
           tree = ast.parse(source)
           extensions = []
+          html_theme = None
+
           for node in ast.walk(tree):
               if isinstance(node, ast.Assign):
                   for target in node.targets:
-                      if isinstance(target, ast.Name) and target.id == "extensions":
+                      if not isinstance(target, ast.Name):
+                          continue
+                      if target.id == "extensions":
                           if isinstance(node.value, (ast.List, ast.Tuple)):
                               for elt in node.value.elts:
                                   if isinstance(elt, ast.Constant):
                                       extensions.append(elt.value)
+                      if target.id == "html_theme":
+                          if isinstance(node.value, ast.Constant):
+                              html_theme = node.value.value
 
-          # Map known Sphinx extensions to their PyPI package names
           ext_to_pkg = {
-              "sphinx.ext.autodoc": None,
-              "sphinx.ext.autosummary": None,
-              "sphinx.ext.autosectionlabel": None,
-              "sphinx.ext.viewcode": None,
-              "sphinx.ext.napoleon": None,
-              "sphinx.ext.intersphinx": None,
-              "sphinx.ext.todo": None,
-              "sphinx.ext.coverage": None,
-              "sphinx.ext.ifconfig": None,
-              "sphinx.ext.githubpages": None,
-              "sphinx.ext.mathjax": None,
-              "sphinx.ext.imgmath": None,
-              "sphinx.ext.doctest": None,
-              "sphinx.ext.duration": None,
-              "sphinx.ext.graphviz": None,
-              "sphinx.ext.inheritance_diagram": None,
-              "myst_parser": "myst-parser",
-              "myst_nb": "myst-nb",
-              "nbsphinx": "nbsphinx",
+              # -- sphinxcontrib third-party (not bundled with Sphinx)
               "sphinxcontrib.bibtex": "sphinxcontrib-bibtex",
               "sphinxcontrib.httpdomain": "sphinxcontrib-httpdomain",
               "sphinxcontrib.plantuml": "sphinxcontrib-plantuml",
               "sphinxcontrib.mermaid": "sphinxcontrib-mermaid",
               "sphinxcontrib.napoleon": "sphinxcontrib-napoleon",
+              "sphinxcontrib.rsvgconverter": "sphinxcontrib-rsvgconverter",
+              # -- MyST / Jupyter
+              "myst_parser": "myst-parser",
+              "myst_nb": "myst-nb",
+              "nbsphinx": "nbsphinx",
+              # -- Themes (also registered as extensions in some setups)
               "sphinx_rtd_theme": "sphinx-rtd-theme",
               "sphinx_book_theme": "sphinx-book-theme",
               "pydata_sphinx_theme": "pydata-sphinx-theme",
               "furo": "furo",
+              # -- Autodoc / API
               "sphinx_autodoc_typehints": "sphinx-autodoc-typehints",
+              "autoapi.extension": "sphinx-autoapi",
+              "sphinx_autoapi": "sphinx-autoapi",
+              "breathe": "breathe",
+              "exhale": "exhale",
+              # -- UI / UX
               "sphinx_copybutton": "sphinx-copybutton",
               "sphinx_design": "sphinx-design",
               "sphinx_tabs": "sphinx-tabs",
               "sphinx_panels": "sphinx-panels",
               "sphinx_togglebutton": "sphinx-togglebutton",
-              "autoapi.extension": "sphinx-autoapi",
-              "sphinx_autoapi": "sphinx-autoapi",
-              "breathe": "breathe",
-              "exhale": "exhale",
+              # -- CLI / args
               "sphinx_click": "sphinx-click",
               "sphinxarg.ext": "sphinx-argparse",
               "sphinx_argparse_cli": "sphinx-argparse-cli",
+              # -- Misc
               "sphinx_sitemap": "sphinx-sitemap",
-              "sphinxcontrib.rsvgconverter": "sphinxcontrib-rsvgconverter",
+          }
+
+          # Bundled Sphinx themes — no install needed
+          _BUILTIN_THEMES = {
+              "alabaster", "classic", "nature", "bizstyle",
+              "pyramid", "scrolls", "agogo", "traditional", "haiku",
+          }
+
+          theme_to_pkg = {
+              "sphinx_rtd_theme": "sphinx-rtd-theme",
+              "sphinx_book_theme": "sphinx-book-theme",
+              "pydata_sphinx_theme": "pydata-sphinx-theme",
+              "furo": "furo",
           }
 
           pkgs = {"sphinx", "sphinx-lint"}
+
           for ext in extensions:
+              if ext.startswith("sphinx.ext."):
+                  continue
               pkg = ext_to_pkg.get(ext)
               if pkg is not None:
                   pkgs.add(pkg)
-              elif not ext.startswith("sphinx."):
-                  # Unknown third-party extension: use ext root as package guess
+              elif ext not in ext_to_pkg:
                   pkg_guess = ext.split(".")[0].replace("_", "-")
                   pkgs.add(pkg_guess)
+
+          if html_theme is not None:
+              if html_theme not in _BUILTIN_THEMES:
+                  theme_pkg = theme_to_pkg.get(html_theme)
+                  pkgs.add(theme_pkg if theme_pkg is not None
+                            else html_theme.replace("_", "-"))
 
           print(" ".join(sorted(pkgs)))
           EOF
           )
-          echo "packages=$EXTENSIONS" >> "$GITHUB_OUTPUT"
+          uv pip install --system $PACKAGES
 
-      - name: Install dependencies from conf.py extensions (no pyproject.toml)
-        if: ${{ steps.detect-pyproject.outputs.found == 'false' }}
-        run: uv pip install --system ${{ steps.extract-extensions.outputs.packages }}
+      - name: Install dependencies via uv sync (docs pyproject.toml)
+        if: ${{ steps.detect-deps.outputs.source == 'pyproject-docs' }}
+        working-directory: ${{ inputs.docs-dir }}
+        run: uv sync ${{ steps.uv-flags.outputs.flags }}
+
+      - name: Install dependencies via uv sync (source pyproject.toml)
+        if: ${{ steps.detect-deps.outputs.source == 'pyproject-source' }}
+        working-directory: ${{ inputs.source-dir }}
+        run: uv sync ${{ steps.uv-flags.outputs.flags }}
+
+      - name: Install dependencies via uv sync (root pyproject.toml)
+        if: ${{ steps.detect-deps.outputs.source == 'pyproject-root' }}
+        run: uv sync ${{ steps.uv-flags.outputs.flags }}
 
       - name: Lint Sphinx docs
         run: uv run sphinx-lint ${{ inputs.source-dir }}
@@ -247,16 +347,16 @@ jobs:
             "${{ inputs.docs-dir }}/${{ inputs.build-dir }}/html"
 
       - name: Minimize uv cache
-        if: ${{ steps.detect-pyproject.outputs.found == 'true' }}
+        if: ${{ steps.detect-deps.outputs.source != 'conf' }}
         run: uv cache prune --ci
 
       # -- Deploy to GitHub Pages only on push to upstream main
       - name: Setup GitHub Pages
-        if: ${{ inputs.deploy }}
+        if: ${{ env.DO_DEPLOY == 'true' }}
         uses: actions/configure-pages@v5
 
       - name: Upload artifact to GitHub Pages
-        if: ${{ inputs.deploy }}
+        if: ${{ env.DO_DEPLOY == 'true' }}
         uses: actions/upload-pages-artifact@v4
         with:
           name: github-pages
@@ -265,5 +365,5 @@ jobs:
 
       - name: Deploy to GitHub Pages
         id: deployment
-        if: ${{ inputs.deploy }}
+        if: ${{ env.DO_DEPLOY == 'true' }}
         uses: actions/deploy-pages@v4
