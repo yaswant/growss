@@ -301,6 +301,8 @@ jobs:
 
           print(" ".join(sorted(pkgs)))
           EOF
+          )
+
           # Create a venv using the uv-managed Python and install into it.
           uv venv ${{ env.VENV_PATH }}
           uv pip install --python ${{ env.VENV_PATH }}/bin/python $PACKAGES
