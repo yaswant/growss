@@ -147,7 +147,7 @@ jobs:
           fi
 
           echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
-          echo "::notice::Dependency source detected: '$SOURCE'."
+          echo "Dependency source detected: '$SOURCE'."
 
       - name: Resolve uv sync flags
         id: uv-flags
@@ -351,10 +351,10 @@ jobs:
         run: |
           if [ -f "${{ inputs.docs-dir }}/Makefile" ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Makefile detected in '${{ inputs.docs-dir }}'. Will use 'make html' to build docs."
+            echo "Makefile detected in '${{ inputs.docs-dir }}'. Will use 'make html' to build docs."
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No Makefile detected in '${{ inputs.docs-dir }}'. Will use 'sphinx-build' to build docs."
+            echo "No Makefile detected in '${{ inputs.docs-dir }}'. Will use 'sphinx-build' to build docs."
           fi
 
       - name: Build HTML docs (make)
@@ -393,3 +393,67 @@ jobs:
         id: deployment
         if: ${{ env.DO_DEPLOY == 'true' }}
         uses: actions/deploy-pages@v4
+
+      - name: Job summary
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          DEP_SOURCE="${{ steps.detect-deps.outputs.source }}"
+          MAKEFILE="${{ steps.detect-makefile.outputs.found }}"
+          PAGES_URL="${{ steps.deployment.outputs.page_url }}"
+
+          # Status icon
+          case "$STATUS" in
+            success)  ICON="✅" ;;
+            failure)  ICON="❌" ;;
+            cancelled) ICON="⚠️" ;;
+            *)        ICON="❓" ;;
+          esac
+
+          # Dependency source label
+          case "$DEP_SOURCE" in
+            conf)             DEP_LABEL="conf.py (extensions + html_theme)" ;;
+            pyproject-docs)   DEP_LABEL="pyproject.toml (${{ inputs.docs-dir }})" ;;
+            pyproject-source) DEP_LABEL="pyproject.toml (${{ inputs.source-dir }})" ;;
+            pyproject-root)   DEP_LABEL="pyproject.toml (repo root)" ;;
+            *)                DEP_LABEL="unknown" ;;
+          esac
+
+          # Build method label
+          if [ "$MAKEFILE" = "true" ]; then
+            BUILD_METHOD="make html"
+          else
+            BUILD_METHOD="sphinx-build"
+          fi
+
+          # uv sync flags (empty when using conf.py)
+          FLAGS="${{ steps.uv-flags.outputs.flags }}"
+          if [ -z "$FLAGS" ]; then
+            FLAGS="_(none)_"
+          fi
+
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          # $ICON Sphinx Docs — $STATUS
+
+          | | |
+          |---|---|
+          | **Python version** | ${{ env.PYTHON_VRSN }} |
+          | **Runner** | ${{ inputs.runner }} |
+          | **Dependency source** | $DEP_LABEL |
+          | **uv sync flags** | $FLAGS |
+          | **Build method** | $BUILD_METHOD |
+          | **Docs directory** | \`${{ inputs.docs-dir }}\` |
+          | **Source directory** | \`${{ inputs.source-dir }}\` |
+          | **Build directory** | \`${{ inputs.build-dir }}\` |
+          | **Deploy enabled** | ${{ inputs.deploy }} |
+          | **Deployed** | ${{ env.DO_DEPLOY }} |
+
+          EOF
+
+          if [ -n "$PAGES_URL" ]; then
+            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## 🌐 Published
+
+          $PAGES_URL
+          EOF
+          fi
