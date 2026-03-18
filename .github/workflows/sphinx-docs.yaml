@@ -205,10 +205,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ env.PYTHON_VRSN }}-
 
+      - name: Create virtual environment
+        run: uv venv --python ${{ env.PYTHON_VRSN }} ${{ env.VENV_PATH }}
+
       - name: Install dependencies from conf.py (extensions + html_theme)
         if: ${{ steps.detect-deps.outputs.source == 'conf' }}
-        env:
-          UV_PYTHON: ${{ env.PYTHON_VRSN }}
         run: |
           PACKAGES=$(python3 - <<'EOF'
           import ast
@@ -305,7 +306,7 @@ jobs:
           print(" ".join(sorted(pkgs)))
           EOF
           )
-          uv pip install --project . $PACKAGES
+          uv pip install --python ${{ env.VENV_PATH }}/bin/python $PACKAGES
 
       - name: Install dependencies via uv sync (pyproject.toml)
         if: ${{ steps.detect-deps.outputs.source != 'conf' }}
