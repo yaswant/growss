@@ -123,30 +123,31 @@ jobs:
           # to pyproject.toml resolution
           if [ "${{ inputs.use-pyproject }}" = "true" ]; then
             if [ -f "${{ inputs.docs-dir }}/pyproject.toml" ]; then
-              echo "source=pyproject-docs" >> "$GITHUB_OUTPUT"
+              SOURCE="pyproject-docs"
             elif [ -f "${{ inputs.source-dir }}/pyproject.toml" ]; then
-              echo "source=pyproject-source" >> "$GITHUB_OUTPUT"
+              SOURCE="pyproject-source"
             elif [ -f "pyproject.toml" ]; then
-              echo "source=pyproject-root" >> "$GITHUB_OUTPUT"
+              SOURCE="pyproject-root"
             else
               echo "::error::use-pyproject is true but no pyproject.toml found in docs-dir, source-dir, or repo root."
               exit 1
             fi
-
           # Default auto-detection: conf.py has highest priority
           elif [ -f "${{ inputs.source-dir }}/conf.py" ]; then
-            echo "source=conf" >> "$GITHUB_OUTPUT"
+            SOURCE="conf"
           elif [ -f "${{ inputs.docs-dir }}/pyproject.toml" ]; then
-            echo "source=pyproject-docs" >> "$GITHUB_OUTPUT"
+            SOURCE="pyproject-docs"
           elif [ -f "${{ inputs.source-dir }}/pyproject.toml" ]; then
-            echo "source=pyproject-source" >> "$GITHUB_OUTPUT"
+            SOURCE="pyproject-source"
           elif [ -f "pyproject.toml" ]; then
-            echo "source=pyproject-root" >> "$GITHUB_OUTPUT"
+            SOURCE="pyproject-root"
           else
             echo "::error::No conf.py or pyproject.toml found. Cannot resolve dependencies."
             exit 1
           fi
-          echo "::notice::Dependency source detected: '${{ steps.detect-deps.outputs.source }}'."
+
+          echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
+          echo "::notice::Dependency source detected: '$SOURCE'."
 
       - name: Resolve uv sync flags
         id: uv-flags
