@@ -330,9 +330,9 @@ jobs:
 
           FLAGS="${{ steps.uv-flags.outputs.flags }}"
           if [ -n "$FLAGS" ]; then
-            echo "::notice::Installing dependencies from '$TARGET_FILE' with: uv sync $FLAGS"
+            echo "Installing dependencies from '$TARGET_FILE' with: uv sync $FLAGS"
           else
-            echo "::notice::Installing dependencies from '$TARGET_FILE' with: uv sync"
+            echo "Installing dependencies from '$TARGET_FILE' with: uv sync"
           fi
 
           # --project points uv at the correct pyproject.toml regardless of
@@ -412,10 +412,10 @@ jobs:
 
           # Dependency source label
           case "$DEP_SOURCE" in
-            conf)             DEP_LABEL="conf.py (extensions + html_theme)" ;;
-            pyproject-docs)   DEP_LABEL="pyproject.toml (${{ inputs.docs-dir }})" ;;
-            pyproject-source) DEP_LABEL="pyproject.toml (${{ inputs.source-dir }})" ;;
-            pyproject-root)   DEP_LABEL="pyproject.toml (repo root)" ;;
+            conf)             DEP_LABEL="\`conf.py\` (extensions + html_theme)" ;;
+            pyproject-docs)   DEP_LABEL="\`pyproject.toml\` (${{ inputs.docs-dir }})" ;;
+            pyproject-source) DEP_LABEL="\`pyproject.toml\` (${{ inputs.source-dir }})" ;;
+            pyproject-root)   DEP_LABEL="\`pyproject.toml\` (repo root)" ;;
             *)                DEP_LABEL="unknown" ;;
           esac
 
