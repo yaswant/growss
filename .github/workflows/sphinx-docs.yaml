@@ -146,6 +146,7 @@ jobs:
             echo "::error::No conf.py or pyproject.toml found. Cannot resolve dependencies."
             exit 1
           fi
+          echo "::notice::Dependency source detected: '${{ steps.detect-deps.outputs.source }}'."
 
       - name: Resolve uv sync flags
         id: uv-flags
@@ -193,6 +194,7 @@ jobs:
           EOF
           )
           echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
+          echo "::notice::Resolved uv sync flags: '$FLAGS' for extras group '$EXTRAS'."
 
       - name: Cache uv venv
         if: ${{ steps.detect-deps.outputs.source != 'conf' }}
