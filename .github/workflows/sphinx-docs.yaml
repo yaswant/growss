@@ -298,54 +298,70 @@ jobs:
           if html_theme is not None:
               if html_theme not in _BUILTIN_THEMES:
                   theme_pkg = theme_to_pkg.get(html_theme)
-                  pkgs.add(theme_pkg if theme_pkg is not None
-                            else html_theme.replace("_", "-"))
+                  pkgs.add(theme_pkg if theme_pkg is not None else html_theme.replace("_", "-"))
 
           print(" ".join(sorted(pkgs)))
           EOF
           )
+          uv pip install --project . $PACKAGES
 
-          # Create a venv using the uv-managed Python and install into it.
-          # This avoids --system which requires a system Python installation
-          # and is incompatible with the managed Python provided by setup-uv.
-          uv venv ${{ env.VENV_PATH }}
-          uv pip install --python ${{ env.VENV_PATH }}/bin/python $PACKAGES
+      - name: Install dependencies via uv sync (pyproject.toml)
+        if: ${{ steps.detect-deps.outputs.source != 'conf' }}
+        run: |
+          case "${{ steps.detect-deps.outputs.source }}" in
+            pyproject-docs)
+              TARGET_FILE="${{ inputs.docs-dir }}/pyproject.toml"
+              ;;
+            pyproject-source)
+              TARGET_FILE="${{ inputs.source-dir }}/pyproject.toml"
+              ;;
+            pyproject-root)
+              TARGET_FILE="pyproject.toml"
+              ;;
+            *)
+              echo "::error::Unexpected dependency source: '${{ steps.detect-deps.outputs.source }}'."
+              exit 1
+              ;;
+          esac
 
-      - name: Install dependencies via uv sync (docs pyproject.toml)
-        if: ${{ steps.detect-deps.outputs.source == 'pyproject-docs' }}
-        working-directory: ${{ inputs.docs-dir }}
-        run: uv sync ${{ steps.uv-flags.outputs.flags }}
+          FLAGS="${{ steps.uv-flags.outputs.flags }}"
+          if [ -n "$FLAGS" ]; then
+            echo "::notice::Installing dependencies from '$TARGET_FILE' with: uv sync $FLAGS"
+          else
+            echo "::notice::Installing dependencies from '$TARGET_FILE' with: uv sync"
+          fi
 
-      - name: Install dependencies via uv sync (source pyproject.toml)
-        if: ${{ steps.detect-deps.outputs.source == 'pyproject-source' }}
-        working-directory: ${{ inputs.source-dir }}
-        run: uv sync ${{ steps.uv-flags.outputs.flags }}
+          # --project points uv at the correct pyproject.toml regardless of
+          # its location; --venv-dir / UV_PROJECT_ENVIRONMENT pins the venv to
+          # VENV_PATH at the repo root so it is always predictable.
+          UV_PROJECT_ENVIRONMENT="${{ env.VENV_PATH }}" uv sync --project "$TARGET_FILE" $FLAGS
 
-      - name: Install dependencies via uv sync (root pyproject.toml)
-        if: ${{ steps.detect-deps.outputs.source == 'pyproject-root' }}
-        run: uv sync ${{ steps.uv-flags.outputs.flags }}
+      - name: Add venv to PATH
+        run: echo "${{ github.workspace }}/${{ env.VENV_PATH }}/bin" >> "$GITHUB_PATH"
 
       - name: Lint Sphinx docs
-        run: uv run --no-project sphinx-lint ${{ inputs.source-dir }}
+        run: sphinx-lint ${{ inputs.source-dir }}
 
       - name: Detect Makefile in docs directory
         id: detect-makefile
         run: |
           if [ -f "${{ inputs.docs-dir }}/Makefile" ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Makefile detected in '${{ inputs.docs-dir }}'. Will use 'make html' to build docs."
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Makefile detected in '${{ inputs.docs-dir }}'. Will use 'sphinx-build' to build docs."
           fi
 
       - name: Build HTML docs (make)
         if: ${{ steps.detect-makefile.outputs.found == 'true' }}
         working-directory: ${{ inputs.docs-dir }}
-        run: uv run --no-project make clean html BUILDDIR="${{ inputs.build-dir }}"
+        run: make clean html BUILDDIR="${{ inputs.build-dir }}"
 
       - name: Build HTML docs (sphinx-build)
         if: ${{ steps.detect-makefile.outputs.found == 'false' }}
         run: |
-          ${{ env.VENV_PATH }}/bin/sphinx-build \
+          sphinx-build \
             --builder html \
             --fresh-env \
             --write-all \
