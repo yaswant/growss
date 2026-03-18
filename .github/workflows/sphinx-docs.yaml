@@ -206,7 +206,7 @@ jobs:
             ${{ runner.os }}-${{ env.PYTHON_VRSN }}-
 
       - name: Create virtual environment
-        run: uv venv --python ${{ env.PYTHON_VRSN }} ${{ env.VENV_PATH }}
+        run: uv venv --python ${{ env.PYTHON_VRSN }} --allow-existing ${{ env.VENV_PATH }}
 
       - name: Install dependencies from conf.py (extensions + html_theme)
         if: ${{ steps.detect-deps.outputs.source == 'conf' }}
