@@ -304,7 +304,12 @@ jobs:
           print(" ".join(sorted(pkgs)))
           EOF
           )
-          uv pip install $PACKAGES
+
+          # Create a venv using the uv-managed Python and install into it.
+          # This avoids --system which requires a system Python installation
+          # and is incompatible with the managed Python provided by setup-uv.
+          uv venv ${{ env.VENV_PATH }}
+          uv pip install --python ${{ env.VENV_PATH }}/bin/python $PACKAGES
 
       - name: Install dependencies via uv sync (docs pyproject.toml)
         if: ${{ steps.detect-deps.outputs.source == 'pyproject-docs' }}
@@ -321,7 +326,7 @@ jobs:
         run: uv sync ${{ steps.uv-flags.outputs.flags }}
 
       - name: Lint Sphinx docs
-        run: ${{ env.VENV_PATH }}/bin/sphinx-lint ${{ inputs.source-dir }}
+        run: uv run --no-project sphinx-lint ${{ inputs.source-dir }}
 
       - name: Detect Makefile in docs directory
         id: detect-makefile
@@ -335,7 +340,7 @@ jobs:
       - name: Build HTML docs (make)
         if: ${{ steps.detect-makefile.outputs.found == 'true' }}
         working-directory: ${{ inputs.docs-dir }}
-        run: uv run make clean html BUILDDIR="${{ inputs.build-dir }}"
+        run: uv run --no-project make clean html BUILDDIR="${{ inputs.build-dir }}"
 
       - name: Build HTML docs (sphinx-build)
         if: ${{ steps.detect-makefile.outputs.found == 'false' }}
