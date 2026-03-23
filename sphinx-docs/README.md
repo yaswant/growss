@@ -72,6 +72,7 @@ jobs:
 | `venv-path`       | Virtual environment path                                                                                           | No       | `.venv`        |
 | `runner`          | GitHub Actions runner                                                                                              | No       | `ubuntu-24.04` |
 | `timeout-minutes` | Job timeout in minutes                                                                                             | No       | `5`            |
+| `sphinx-options`  | Additional options passed to `sphinx-build` or `make` via `SPHINXOPTS`                                             | No       | `--jobs auto --write-all --fresh-env --nitpicky --fail-on-warnings --keep-going` |
 | `deploy`          | Whether to deploy to GitHub Pages                                                                                  | No       | `true`         |
 | `docs-dir`        | Path to the docs directory where `Makefile` lives                                                                  | No       | `docs`         |
 | `source-dir`      | Path to the Sphinx source directory where `conf.py` lives                                                          | No       | `docs/source`  |

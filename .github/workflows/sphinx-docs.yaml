@@ -30,7 +30,7 @@ on:
         type: number
         default: 5
       sphinx-options:
-        description: 'Additional options to pass to sphinx-build when no Makefile is found'
+        description: 'Additional options to pass to sphinx-build or make (via SPHINXOPTS)'
         required: false
         type: string
         default: '--jobs auto --write-all --fresh-env --nitpicky --fail-on-warnings --keep-going'
