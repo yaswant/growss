@@ -17,6 +17,9 @@ deploys it to GitHub Pages.
   [`sphinx-lint`](https://github.com/sphinx-contrib/sphinx-lint)
 - Uses `make html` if a `Makefile` is present in the docs directory, otherwise
   falls back to `sphinx-build`
+- Automatically appends `-v --show-traceback` to Sphinx invocations when the
+  [GitHub Actions runner debug mode](https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging)
+  is active (`ACTIONS_RUNNER_DEBUG=true`)
 - Deploys to GitHub Pages **only on pushes to the upstream `main` branch** —
   never from forks or pull requests
 
@@ -71,12 +74,12 @@ jobs:
 | `python-version`  | Python version to use                                                                                              | No       | `3.12`         |
 | `venv-path`       | Virtual environment path                                                                                           | No       | `.venv`        |
 | `runner`          | GitHub Actions runner                                                                                              | No       | `ubuntu-24.04` |
-| `timeout-minutes` | Job timeout in minutes                                                                                             | No       | `5`            |
+| `timeout-minutes` | Job timeout in minutes                                                                                             | No       | `10`           |
 | `sphinx-options`  | Additional options passed to `sphinx-build` or `make` via `SPHINXOPTS`                                             | No       | `--jobs auto --write-all --fresh-env --nitpicky --fail-on-warnings --keep-going` |
 | `deploy`          | Whether to deploy to GitHub Pages                                                                                  | No       | `true`         |
 | `docs-dir`        | Path to the docs directory where `Makefile` lives                                                                  | No       | `docs`         |
 | `source-dir`      | Path to the Sphinx source directory where `conf.py` lives                                                          | No       | `docs/source`  |
-| `build-dir`       | Sphinx build output directory (relative to `docs-dir`)                                                             | No       | `_build`       |
+| `build-dir`       | Sphinx build output directory — relative to `docs-dir` when using `make`, or relative to repo root when using `sphinx-build` | No       | `_build`       |
 | `use-pyproject`   | Force `pyproject.toml` resolution, skipping `conf.py` entirely                                                     | No       | `false`        |
 | `extras`          | Optional dependency extra or group name to pass to `uv sync` (see [Dependency Resolution](#dependency-resolution)) | No       | `''`           |
 

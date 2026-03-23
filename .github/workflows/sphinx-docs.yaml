@@ -28,7 +28,7 @@ on:
         description: 'Job timeout in minutes'
         required: false
         type: number
-        default: 5
+        default: 10
       sphinx-options:
         description: 'Additional options to pass to sphinx-build or make (via SPHINXOPTS)'
         required: false
