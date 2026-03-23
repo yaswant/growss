@@ -33,7 +33,7 @@ on:
         description: 'Additional options to pass to sphinx-build or make (via SPHINXOPTS)'
         required: false
         type: string
-        default: '--jobs auto --write-all --fresh-env --nitpicky --fail-on-warnings --keep-going'
+        default: '--jobs auto --write-all --fresh-env --nitpicky --fail-on-warning --keep-going'
       deploy:
         description: 'Whether to deploy to GitHub Pages'
         required: false
