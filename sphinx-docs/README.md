@@ -79,7 +79,7 @@ jobs:
 | `deploy`          | Whether to deploy to GitHub Pages                                                                                  | No       | `true`         |
 | `docs-dir`        | Path to the docs directory where `Makefile` lives                                                                  | No       | `docs`         |
 | `source-dir`      | Path to the Sphinx source directory where `conf.py` lives                                                          | No       | `docs/source`  |
-| `build-dir`       | Sphinx build output directory — relative to `docs-dir` when using `make`, or relative to repo root when using `sphinx-build` | No       | `_build`       |
+| `build-dir`       | Sphinx build output directory (relative to `docs-dir`)                                                             | No       | `_build`       |
 | `use-pyproject`   | Force `pyproject.toml` resolution, skipping `conf.py` entirely                                                     | No       | `false`        |
 | `extras`          | Optional dependency extra or group name to pass to `uv sync` (see [Dependency Resolution](#dependency-resolution)) | No       | `''`           |
 

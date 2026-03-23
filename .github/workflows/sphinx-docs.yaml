@@ -102,7 +102,7 @@ jobs:
     env:
       PYTHON_VRSN: ${{ inputs.python-version }}
       VENV_PATH: ${{ inputs.venv-path }}
-      SPHINX_DEBUG: ${{ runner.debug == '1' && '-v --show-traceback' || '' }}
+      SPHINX_DEBUG: ''
       # Deploy only when: caller opted in AND we are on the upstream main branch
       # (not a fork's main, not a PR, not any other branch)
       DO_DEPLOY: >-
@@ -114,6 +114,10 @@ jobs:
         }}
 
     steps:
+      - name: Set Sphinx Debug Options
+        if: ${{ runner.debug == '1' }}
+        run: echo "SPHINX_DEBUG=-v --show-traceback" >> "$GITHUB_ENV"
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
