@@ -102,6 +102,7 @@ jobs:
     env:
       PYTHON_VRSN: ${{ inputs.python-version }}
       VENV_PATH: ${{ inputs.venv-path }}
+      SPHINX_DEBUG: ${{ runner.debug == '1' && '-v --show-traceback' || '' }}
       # Deploy only when: caller opted in AND we are on the upstream main branch
       # (not a fork's main, not a PR, not any other branch)
       DO_DEPLOY: >-
@@ -367,7 +368,7 @@ jobs:
         working-directory: ${{ inputs.docs-dir }}
         run: |
           make clean html \
-            SPHINXOPTS="${{ inputs.sphinx-options }}" \
+            SPHINXOPTS="${{ inputs.sphinx-options }} ${{ env.SPHINX_DEBUG }}" \
             BUILDDIR="${{ inputs.build-dir }}"
 
       - name: Build HTML docs (sphinx-build)
@@ -376,6 +377,7 @@ jobs:
           sphinx-build \
             --builder html \
             ${{ inputs.sphinx-options }} \
+            ${{ env.SPHINX_DEBUG }} \
             "${{ inputs.source-dir }}" \
             "${{ inputs.docs-dir }}/${{ inputs.build-dir }}/html"
 
