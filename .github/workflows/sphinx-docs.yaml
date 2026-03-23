@@ -29,6 +29,11 @@ on:
         required: false
         type: number
         default: 5
+      sphinx-options:
+        description: 'Additional options to pass to sphinx-build when no Makefile is found'
+        required: false
+        type: string
+        default: '--jobs auto --write-all --fresh-env --nitpicky --fail-on-warnings --keep-going'
       deploy:
         description: 'Whether to deploy to GitHub Pages'
         required: false
@@ -360,15 +365,17 @@ jobs:
       - name: Build HTML docs (make)
         if: ${{ steps.detect-makefile.outputs.found == 'true' }}
         working-directory: ${{ inputs.docs-dir }}
-        run: make clean html BUILDDIR="${{ inputs.build-dir }}"
+        run: |
+          make clean html \
+            SPHINXOPTS="${{ inputs.sphinx-options }}" \
+            BUILDDIR="${{ inputs.build-dir }}"
 
       - name: Build HTML docs (sphinx-build)
         if: ${{ steps.detect-makefile.outputs.found == 'false' }}
         run: |
           sphinx-build \
             --builder html \
-            --fresh-env \
-            --write-all \
+            ${{ inputs.sphinx-options }} \
             "${{ inputs.source-dir }}" \
             "${{ inputs.docs-dir }}/${{ inputs.build-dir }}/html"
 
