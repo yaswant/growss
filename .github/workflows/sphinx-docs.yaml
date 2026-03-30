@@ -177,14 +177,14 @@ jobs:
           esac
 
           # Use yq to check for the extra/group and set the flag
-          FLAGS=$(yq "if .project.optional-dependencies.[\"$EXTRAS\"] then \"--extra $EXTRAS\" elif .dependency-groups.[\"$EXTRAS\"] then \"--group $EXTRAS\" else \"\" end" "$PYPROJECT")
-
-          if [ -z "$FLAGS" ]; then
-            echo "::warning::'$EXTRAS' not found in $PYPROJECT. Running plain uv sync."
-          fi
+          FLAGS=$(yq "
+            (select(.project.optional-dependencies.[\"$EXTRAS\"]) | \"--extra $EXTRAS\") //
+            (select(.dependency-groups.[\"$EXTRAS\"]) | \"--group $EXTRAS\") //
+            \"\"
+          " "$PYPROJECT")
 
           echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
-          echo "::notice::Resolved uv sync flags: '$FLAGS' for extras group '$EXTRAS'."
+          [ -z "$FLAGS" ] && echo "::warning::'$EXTRAS' not found in $PYPROJECT." || echo "::notice::Resolved flags: '$FLAGS'"
 
       - name: Cache uv venv
         if: steps.detect-deps.outputs.source != 'conf'
