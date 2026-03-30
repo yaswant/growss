@@ -360,15 +360,15 @@ jobs:
         id: detect-makefile
         run: |
           if [ -f "${{ inputs.docs-dir }}/Makefile" ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "found_makefile=true" >> "$GITHUB_OUTPUT"
             echo "Makefile detected in '${{ inputs.docs-dir }}'. Will use 'make html' to build docs."
           else
-            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "found_makefile=false" >> "$GITHUB_OUTPUT"
             echo "No Makefile detected in '${{ inputs.docs-dir }}'. Will use 'sphinx-build' to build docs."
           fi
 
       - name: Build HTML docs (make)
-        if: ${{ steps.detect-makefile.outputs.found == 'true' }}
+        if: steps.detect-makefile.outputs.found_makefile
         working-directory: ${{ inputs.docs-dir }}
         run: |
           make clean html \
@@ -376,7 +376,7 @@ jobs:
             BUILDDIR="${{ inputs.build-dir }}"
 
       - name: Build HTML docs (sphinx-build)
-        if: ${{ steps.detect-makefile.outputs.found == 'false' }}
+        if: steps.detect-makefile.outputs.found_makefile == 'false'
         run: |
           sphinx-build \
             --builder html \
