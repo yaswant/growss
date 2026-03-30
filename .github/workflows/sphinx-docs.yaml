@@ -177,13 +177,10 @@ jobs:
           esac
 
           # Use yq to check for the extra/group and set the flag
-          FLAGS=$(yq "
-            if .project.optional-dependencies | has(\"$EXTRAS\") then \"--extra $EXTRAS\"
-            elif .dependency-groups | has(\"$EXTRAS\") then \"--group $EXTRAS\"
-            else \"\" end" "$PYPROJECT")
+          FLAGS=$(yq "if .project.optional-dependencies.[\"$EXTRAS\"] then \"--extra $EXTRAS\" elif .dependency-groups.[\"$EXTRAS\"] then \"--group $EXTRAS\" else \"\" end" "$PYPROJECT")
 
           if [ -z "$FLAGS" ]; then
-            echo "::warning::'$EXTRAS' not found in pyproject.toml. Running plain uv sync."
+            echo "::warning::'$EXTRAS' not found in $PYPROJECT. Running plain uv sync."
           fi
 
           echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
