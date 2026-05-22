@@ -385,7 +385,7 @@ jobs:
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
           # $ICON Sphinx Docs — $JOB_STATUS
 
-          | | |
+          | Property | Value |
           |---|---|
           | **Python version** | ${PYTHON_VRSN} |
           | **Runner** | ${RUNNER} |
