@@ -390,13 +390,13 @@ jobs:
           | **Python version** | ${PYTHON_VRSN} |
           | **Runner** | ${RUNNER} |
           | **Dependency source** | $DEP_LABEL |
-          | **uv sync flags** | $FLAGS |
-          | **Build method** | $BUILD_METHOD |
+          | **uv sync flags** | \`${FLAGS}\` |
+          | **Build method** | \`${BUILD_METHOD}\` |
           | **Docs directory** | \`${DOCS_DIR}\` |
           | **Source directory** | \`${SOURCE_DIR}\` |
           | **Build directory** | \`${BUILD_DIR}\` |
-          | **Deploy enabled** | ${DEPLOY} |
-          | **Deployed** | ${DO_DEPLOY} |
+          | **Deploy enabled** | \`${DEPLOY}\` |
+          | **Deployed** | \`${DO_DEPLOY}\` |
 
           EOF
 
