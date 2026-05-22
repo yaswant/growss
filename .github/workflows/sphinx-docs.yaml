@@ -380,7 +380,7 @@ jobs:
 
           | | |
           |---|---|
-          | **Python version** | ${PYTHON_VRSN }} |
+          | **Python version** | ${PYTHON_VRSN} |
           | **Runner** | ${RUNNER} |
           | **Dependency source** | $DEP_LABEL |
           | **uv sync flags** | $FLAGS |
