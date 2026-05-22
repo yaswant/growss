@@ -25,11 +25,12 @@ deploys it to GitHub Pages.
 
 ## Platform Support
 
-The workflow is compatible against `ubuntu-*` and `macos-*` GitHub Actions
+The workflow is compatible with `ubuntu-*` and `macos-*` GitHub Actions
 runners, where [`yq`](https://github.com/mikefarah/yq) and `bash` are
 pre-installed.
 
-Windows runners (`windows-*`) are **not natively supported**.
+> [!WARNING]
+> This workflow is **not natively supported** on Windows runners (`windows-*`).
 
 ## Supported Directory Layouts
 
