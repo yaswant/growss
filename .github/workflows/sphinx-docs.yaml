@@ -339,6 +339,7 @@ jobs:
       - name: Job summary
         if: always()
         env:
+          RUNNER: ${{ inputs.runner }}
           JOB_STATUS: ${{ job.status }}
           DEP_SOURCE: ${{ steps.detect-deps.outputs.source }}
           MAKEFILE_FOUND: ${{ steps.detect-makefile.outputs.found }}
