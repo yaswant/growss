@@ -383,7 +383,7 @@ jobs:
           fi
 
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          # $ICON Sphinx Docs — $STATUS
+          # $ICON Sphinx Docs — $JOB_STATUS
 
           | | |
           |---|---|
