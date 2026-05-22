@@ -344,9 +344,15 @@ jobs:
           MAKEFILE_FOUND: ${{ steps.detect-makefile.outputs.found }}
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
           UV_FLAGS: ${{ steps.uv-flags.outputs.flags }}
+          PYTHON_VRSN: ${{ env.PYTHON_VRSN }}
+          DOCS_DIR: ${{ env.DOCS_DIR }}
+          SOURCE_DIR: ${{ env.SOURCE_DIR }}
+          BUILD_DIR: ${{ env.BUILD_DIR }}
+          DEPLOY: ${{ env.DEPLOY }}
+          DO_DEPLOY: ${{ env.DO_DEPLOY }}
         run: |
           # Status icon
-          case "$STATUS" in
+          case "$JOB_STATUS" in
             success)  ICON="✅" ;;
             failure)  ICON="❌" ;;
             cancelled) ICON="⚠️" ;;
@@ -385,9 +391,9 @@ jobs:
           | **Dependency source** | $DEP_LABEL |
           | **uv sync flags** | $FLAGS |
           | **Build method** | $BUILD_METHOD |
-          | **Docs directory** | `${DOCS_DIR}` |
-          | **Source directory** | `${SOURCE_DIR}` |
-          | **Build directory** | `${BUILD_DIR}` |
+          | **Docs directory** | \`${DOCS_DIR}\` |
+          | **Source directory** | \`${SOURCE_DIR}\` |
+          | **Build directory** | \`${BUILD_DIR}\` |
           | **Deploy enabled** | ${DEPLOY} |
           | **Deployed** | ${DO_DEPLOY} |
 
