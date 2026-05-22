@@ -23,6 +23,13 @@ deploys it to GitHub Pages.
 - Deploys to GitHub Pages **only on pushes to the upstream `main` branch** —
   never from forks or pull requests
 
+## Platform Support
+
+The workflow is compatible against `ubuntu-*` and `macos-*` GitHub Actions runners,
+where [`yq`](https://github.com/mikefarah/yq) and `bash` are pre-installed.
+
+Windows runners (`windows-*`) are **not natively supported**.
+
 ## Supported Directory Layouts
 
 ### Typical layout (default)

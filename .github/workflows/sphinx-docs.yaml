@@ -90,8 +90,8 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  pages: write  # Required for deploying to GitHub Pages
+  id-token: write  # Required for authentication in uv sync when using pyproject.toml
 
 jobs:
   build-and-deploy:
@@ -103,6 +103,11 @@ jobs:
       PYTHON_VRSN: ${{ inputs.python-version }}
       VENV_PATH: ${{ inputs.venv-path }}
       SPHINX_DEBUG: ''
+      USE_PYPROJECT: ${{ inputs.use-pyproject }}
+      DOCS_DIR: ${{ inputs.docs-dir }}
+      SOURCE_DIR: ${{ inputs.source-dir }}
+      BUILD_DIR: ${{ inputs.build-dir }}
+      SPHINX_OPTIONS: ${{ inputs.sphinx-options }}
       # Deploy only when: caller opted in AND we are on the upstream main branch
       # (not a fork's main, not a PR, not any other branch)
       DO_DEPLOY: >-
@@ -119,10 +124,12 @@ jobs:
         run: echo "SPHINX_DEBUG=-v --show-traceback" >> "$GITHUB_ENV"
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup uv with Python ${{ env.PYTHON_VRSN }}
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: ${{ env.PYTHON_VRSN }}
 
@@ -131,10 +138,10 @@ jobs:
         run: |
           # When use-pyproject is true, skip conf.py entirely and go straight
           # to pyproject.toml resolution
-          if [ "${{ inputs.use-pyproject }}" = "true" ]; then
-            if [ -f "${{ inputs.docs-dir }}/pyproject.toml" ]; then
+          if [ "${USE_PYPROJECT}" = "true" ]; then
+            if [ -f "${DOCS_DIR}/pyproject.toml" ]; then
               SOURCE="pyproject-docs"
-            elif [ -f "${{ inputs.source-dir }}/pyproject.toml" ]; then
+            elif [ -f "${SOURCE_DIR}/pyproject.toml" ]; then
               SOURCE="pyproject-source"
             elif [ -f "pyproject.toml" ]; then
               SOURCE="pyproject-root"
@@ -143,11 +150,11 @@ jobs:
               exit 1
             fi
           # Default auto-detection: conf.py has highest priority
-          elif [ -f "${{ inputs.source-dir }}/conf.py" ]; then
+          elif [ -f "${SOURCE_DIR}/conf.py" ]; then
             SOURCE="conf"
-          elif [ -f "${{ inputs.docs-dir }}/pyproject.toml" ]; then
+          elif [ -f "${DOCS_DIR}/pyproject.toml" ]; then
             SOURCE="pyproject-docs"
-          elif [ -f "${{ inputs.source-dir }}/pyproject.toml" ]; then
+          elif [ -f "${SOURCE_DIR}/pyproject.toml" ]; then
             SOURCE="pyproject-source"
           elif [ -f "pyproject.toml" ]; then
             SOURCE="pyproject-root"
@@ -162,17 +169,20 @@ jobs:
       - name: Resolve uv sync flags
         id: uv-flags
         if: steps.detect-deps.outputs.source != 'conf'
+        env:
+          DETECTED_SOURCE: ${{ steps.detect-deps.outputs.source }}
+          EXTRA_DEPS: ${{ inputs.extras }}
         run: |
           # Determine whether `extras` refers to an optional-dependency extra
           # or a dependency-group, then set the appropriate uv sync flag.
 
-          EXTRAS="${{ inputs.extras }}"
+          EXTRAS="$EXTRA_DEPS"
           [ -z "$EXTRAS" ] && { echo "flags=" >> "$GITHUB_OUTPUT"; exit 0; }
 
           # Locate the relevant pyproject.toml
-          case "${{ steps.detect-deps.outputs.source }}" in
-            pyproject-docs)   PYPROJECT="${{ inputs.docs-dir }}/pyproject.toml" ;;
-            pyproject-source) PYPROJECT="${{ inputs.source-dir }}/pyproject.toml" ;;
+          case "${DETECTED_SOURCE}" in
+            pyproject-docs)   PYPROJECT="${DOCS_DIR}/pyproject.toml" ;;
+            pyproject-source) PYPROJECT="${SOURCE_DIR}/pyproject.toml" ;;
             *)                PYPROJECT="pyproject.toml" ;;
           esac
 
@@ -188,7 +198,7 @@ jobs:
 
       - name: Cache uv venv
         if: steps.detect-deps.outputs.source != 'conf'
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ env.VENV_PATH }}
           key: ${{ runner.os }}-${{ env.PYTHON_VRSN }}-${{ hashFiles('pyproject.toml', format('{0}/pyproject.toml', inputs.docs-dir), format('{0}/pyproject.toml', inputs.source-dir)) }}
@@ -196,15 +206,18 @@ jobs:
             ${{ runner.os }}-${{ env.PYTHON_VRSN }}-
 
       - name: Create virtual environment
-        run: uv venv --python ${{ env.PYTHON_VRSN }} --allow-existing ${{ env.VENV_PATH }}
+        run: uv venv --python ${PYTHON_VRSN} --allow-existing ${VENV_PATH}
 
       - name: Install dependencies from conf.py (extensions + html_theme)
         if: steps.detect-deps.outputs.source == 'conf'
         run: |
           PACKAGES=$(python3 - <<'EOF'
-          import ast
+          import ast, os
 
-          with open("${{ inputs.source-dir }}/conf.py") as f:
+          source_dir = os.environ["SOURCE_DIR"]
+          conf_path = os.path.join(source_dir, "conf.py")
+
+          with open(conf_path) as f:
               tree = ast.parse(f.read())
 
           exts, theme = [], None
@@ -231,30 +244,32 @@ jobs:
           print(" ".join(sorted(pkgs)))
           EOF
           )
-          uv pip install --python ${{ env.VENV_PATH }}/bin/python $PACKAGES
+          uv pip install --python ${VENV_PATH}/bin/python $PACKAGES
 
       - name: Install dependencies via uv sync (pyproject.toml)
         if: steps.detect-deps.outputs.source != 'conf'
+        env:
+          DETECTED_SOURCE: ${{ steps.detect-deps.outputs.source }}
+          UV_FLAGS: ${{ steps.uv-flags.outputs.flags }}
         run: |
-          case "${{ steps.detect-deps.outputs.source }}" in
+          case "${DETECTED_SOURCE}" in
             pyproject-docs)
-              TARGET_FILE="${{ inputs.docs-dir }}/pyproject.toml"
+              TARGET_FILE="${DOCS_DIR}/pyproject.toml"
               ;;
             pyproject-source)
-              TARGET_FILE="${{ inputs.source-dir }}/pyproject.toml"
+              TARGET_FILE="${SOURCE_DIR}/pyproject.toml"
               ;;
             pyproject-root)
               TARGET_FILE="pyproject.toml"
               ;;
             *)
-              echo "::error::Unexpected dependency source: '${{ steps.detect-deps.outputs.source }}'."
+              echo "::error::Unexpected dependency source: '${DETECTED_SOURCE}'."
               exit 1
               ;;
           esac
 
-          FLAGS="${{ steps.uv-flags.outputs.flags }}"
-          if [ -n "$FLAGS" ]; then
-            echo "Installing dependencies from '$TARGET_FILE' with: uv sync $FLAGS"
+          if [ -n "$UV_FLAGS" ]; then
+            echo "Installing dependencies from '$TARGET_FILE' with: uv sync $UV_FLAGS"
           else
             echo "Installing dependencies from '$TARGET_FILE' with: uv sync"
           fi
@@ -262,23 +277,23 @@ jobs:
           # --project points uv at the correct pyproject.toml regardless of
           # its location; --venv-dir / UV_PROJECT_ENVIRONMENT pins the venv to
           # VENV_PATH at the repo root so it is always predictable.
-          UV_PROJECT_ENVIRONMENT="${{ env.VENV_PATH }}" uv sync --project "$TARGET_FILE" $FLAGS
+          UV_PROJECT_ENVIRONMENT="${VENV_PATH}" uv sync --project "$TARGET_FILE" $UV_FLAGS
 
       - name: Add venv to PATH
-        run: echo "${{ github.workspace }}/${{ env.VENV_PATH }}/bin" >> "$GITHUB_PATH"
+        run: echo "${GITHUB_WORKSPACE}/${VENV_PATH}/bin" >> "$GITHUB_PATH"
 
       - name: Lint Sphinx docs
-        run: sphinx-lint ${{ inputs.source-dir }}
+        run: sphinx-lint ${SOURCE_DIR}
 
       - name: Detect Makefile in docs directory
         id: detect-makefile
         run: |
-          if [ -f "${{ inputs.docs-dir }}/Makefile" ]; then
+          if [ -f "${DOCS_DIR}/Makefile" ]; then
             echo "found_makefile=true" >> "$GITHUB_OUTPUT"
-            echo "Makefile detected in '${{ inputs.docs-dir }}'. Will use 'make html' to build docs."
+            echo "Makefile detected in '${DOCS_DIR}'. Will use 'make html' to build docs."
           else
             echo "found_makefile=false" >> "$GITHUB_OUTPUT"
-            echo "No Makefile detected in '${{ inputs.docs-dir }}'. Will use 'sphinx-build' to build docs."
+            echo "No Makefile detected in '${DOCS_DIR}'. Will use 'sphinx-build' to build docs."
           fi
 
       - name: Build HTML docs (make)
@@ -286,18 +301,18 @@ jobs:
         working-directory: ${{ inputs.docs-dir }}
         run: |
           make clean html \
-            SPHINXOPTS="${{ inputs.sphinx-options }} ${{ env.SPHINX_DEBUG }}" \
-            BUILDDIR="${{ inputs.build-dir }}"
+            SPHINXOPTS="${SPHINX_OPTIONS} ${SPHINX_DEBUG}" \
+            BUILDDIR="${BUILD_DIR}"
 
       - name: Build HTML docs (sphinx-build)
         if: steps.detect-makefile.outputs.found_makefile == 'false'
         run: |
           sphinx-build \
             --builder html \
-            ${{ inputs.sphinx-options }} \
-            ${{ env.SPHINX_DEBUG }} \
-            "${{ inputs.source-dir }}" \
-            "${{ inputs.docs-dir }}/${{ inputs.build-dir }}/html"
+            ${SPHINX_OPTIONS} \
+            ${SPHINX_DEBUG} \
+            "${SOURCE_DIR}" \
+            "${DOCS_DIR}/${BUILD_DIR}/html"
 
       - name: Minimize uv cache
         if: steps.detect-deps.outputs.source != 'conf'
@@ -306,11 +321,11 @@ jobs:
       # -- Deploy to GitHub Pages only on push to upstream main
       - name: Setup GitHub Pages
         if: env.DO_DEPLOY == 'true'
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Upload artifact to GitHub Pages
         if: env.DO_DEPLOY == 'true'
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           name: github-pages
           path: ${{ inputs.docs-dir }}/${{ inputs.build-dir }}/html
@@ -319,16 +334,17 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         if: env.DO_DEPLOY == 'true'
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
 
       - name: Job summary
         if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          DEP_SOURCE: ${{ steps.detect-deps.outputs.source }}
+          MAKEFILE_FOUND: ${{ steps.detect-makefile.outputs.found }}
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+          UV_FLAGS: ${{ steps.uv-flags.outputs.flags }}
         run: |
-          STATUS="${{ job.status }}"
-          DEP_SOURCE="${{ steps.detect-deps.outputs.source }}"
-          MAKEFILE="${{ steps.detect-makefile.outputs.found }}"
-          PAGES_URL="${{ steps.deployment.outputs.page_url }}"
-
           # Status icon
           case "$STATUS" in
             success)  ICON="✅" ;;
@@ -340,21 +356,21 @@ jobs:
           # Dependency source label
           case "$DEP_SOURCE" in
             conf)             DEP_LABEL="\`conf.py\` (extensions + html_theme)" ;;
-            pyproject-docs)   DEP_LABEL="\`pyproject.toml\` (${{ inputs.docs-dir }})" ;;
-            pyproject-source) DEP_LABEL="\`pyproject.toml\` (${{ inputs.source-dir }})" ;;
+            pyproject-docs)   DEP_LABEL="\`pyproject.toml\` (${SOURCE_DIR})" ;;
+            pyproject-source) DEP_LABEL="\`pyproject.toml\` (${SOURCE_DIR})" ;;
             pyproject-root)   DEP_LABEL="\`pyproject.toml\` (repo root)" ;;
             *)                DEP_LABEL="unknown" ;;
           esac
 
           # Build method label
-          if [ "$MAKEFILE" = "true" ]; then
+          if [ "$MAKEFILE_FOUND" = "true" ]; then
             BUILD_METHOD="make html"
           else
             BUILD_METHOD="sphinx-build"
           fi
 
           # uv sync flags (empty when using conf.py)
-          FLAGS="${{ steps.uv-flags.outputs.flags }}"
+          FLAGS="${UV_FLAGS}"
           if [ -z "$FLAGS" ]; then
             FLAGS="_(none)_"
           fi
@@ -364,16 +380,16 @@ jobs:
 
           | | |
           |---|---|
-          | **Python version** | ${{ env.PYTHON_VRSN }} |
-          | **Runner** | ${{ inputs.runner }} |
+          | **Python version** | ${PYTHON_VRSN }} |
+          | **Runner** | ${RUNNER} |
           | **Dependency source** | $DEP_LABEL |
           | **uv sync flags** | $FLAGS |
           | **Build method** | $BUILD_METHOD |
-          | **Docs directory** | \`${{ inputs.docs-dir }}\` |
-          | **Source directory** | \`${{ inputs.source-dir }}\` |
-          | **Build directory** | \`${{ inputs.build-dir }}\` |
-          | **Deploy enabled** | ${{ inputs.deploy }} |
-          | **Deployed** | ${{ env.DO_DEPLOY }} |
+          | **Docs directory** | `${DOCS_DIR}` |
+          | **Source directory** | `${SOURCE_DIR}` |
+          | **Build directory** | `${BUILD_DIR}` |
+          | **Deploy enabled** | ${DEPLOY} |
+          | **Deployed** | ${DO_DEPLOY} |
 
           EOF
 
