@@ -25,8 +25,9 @@ deploys it to GitHub Pages.
 
 ## Platform Support
 
-The workflow is compatible against `ubuntu-*` and `macos-*` GitHub Actions runners,
-where [`yq`](https://github.com/mikefarah/yq) and `bash` are pre-installed.
+The workflow is compatible against `ubuntu-*` and `macos-*` GitHub Actions
+runners, where [`yq`](https://github.com/mikefarah/yq) and `bash` are
+pre-installed.
 
 Windows runners (`windows-*`) are **not natively supported**.
 
@@ -49,8 +50,8 @@ Use with defaults — no input overrides required:
 
 ```yaml
 jobs:
-  docs:
-    uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
+    docs:
+        uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
 ```
 
 ### Flat docs layout
@@ -68,27 +69,27 @@ Override `source-dir` to point to `docs`:
 
 ```yaml
 jobs:
-  docs:
-    uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
-    with:
-      source-dir: docs
+    docs:
+        uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
+        with:
+            source-dir: docs
 ```
 
 ## Inputs
 
-| Input             | Description                                                                                                        | Required | Default        |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------ | -------- | -------------- |
-| `python-version`  | Python version to use                                                                                              | No       | `3.12`         |
-| `venv-path`       | Virtual environment path                                                                                           | No       | `.venv`        |
-| `runner`          | GitHub Actions runner                                                                                              | No       | `ubuntu-24.04` |
-| `timeout-minutes` | Job timeout in minutes                                                                                             | No       | `10`           |
+| Input             | Description                                                                                                        | Required | Default                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ | -------- | -------------------------------------------------------------------------------- |
+| `python-version`  | Python version to use                                                                                              | No       | `3.12`                                                                           |
+| `venv-path`       | Virtual environment path                                                                                           | No       | `.venv`                                                                          |
+| `runner`          | GitHub Actions runner                                                                                              | No       | `ubuntu-24.04`                                                                   |
+| `timeout-minutes` | Job timeout in minutes                                                                                             | No       | `10`                                                                             |
 | `sphinx-options`  | Additional options passed to `sphinx-build` or `make` via `SPHINXOPTS`                                             | No       | `--jobs auto --write-all --fresh-env --nitpicky --fail-on-warnings --keep-going` |
-| `deploy`          | Whether to deploy to GitHub Pages                                                                                  | No       | `true`         |
-| `docs-dir`        | Path to the docs directory where `Makefile` lives                                                                  | No       | `docs`         |
-| `source-dir`      | Path to the Sphinx source directory where `conf.py` lives                                                          | No       | `docs/source`  |
-| `build-dir`       | Sphinx build output directory (relative to `docs-dir`)                                                             | No       | `_build`       |
-| `use-pyproject`   | Force `pyproject.toml` resolution, skipping `conf.py` entirely                                                     | No       | `false`        |
-| `extras`          | Optional dependency extra or group name to pass to `uv sync` (see [Dependency Resolution](#dependency-resolution)) | No       | `''`           |
+| `deploy`          | Whether to deploy to GitHub Pages                                                                                  | No       | `true`                                                                           |
+| `docs-dir`        | Path to the docs directory where `Makefile` lives                                                                  | No       | `docs`                                                                           |
+| `source-dir`      | Path to the Sphinx source directory where `conf.py` lives                                                          | No       | `docs/source`                                                                    |
+| `build-dir`       | Sphinx build output directory (relative to `docs-dir`)                                                             | No       | `_build`                                                                         |
+| `use-pyproject`   | Force `pyproject.toml` resolution, skipping `conf.py` entirely                                                     | No       | `false`                                                                          |
+| `extras`          | Optional dependency extra or group name to pass to `uv sync` (see [Dependency Resolution](#dependency-resolution)) | No       | `''`                                                                             |
 
 ## Outputs
 
@@ -102,9 +103,9 @@ The calling workflow must grant the following permissions:
 
 ```yaml
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+    contents: read
+    pages: write
+    id-token: write
 ```
 
 ## Usage Examples
@@ -115,16 +116,16 @@ permissions:
 name: Docs
 
 on:
-  push:
-    branches: [main]
+    push:
+        branches: [main]
 
 jobs:
-  docs:
-    uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    docs:
+        uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
 ```
 
 ### Full — build on PRs, deploy only when merged to `main`
@@ -133,30 +134,30 @@ jobs:
 name: Docs
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    types: [opened, reopened, synchronize]
-  workflow_dispatch:
+    push:
+        branches: [main]
+    pull_request:
+        types: [opened, reopened, synchronize]
+    workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  docs:
-    uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
-    with:
-      python-version: "3.12"
-      runner: ubuntu-24.04
-      timeout-minutes: 10
-      docs-dir: docs
-      source-dir: docs/source
-      build-dir: _build
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    docs:
+        uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
+        with:
+            python-version: "3.12"
+            runner: ubuntu-24.04
+            timeout-minutes: 10
+            docs-dir: docs
+            source-dir: docs/source
+            build-dir: _build
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
 ```
 
 > **Note:** You do not need to pass `deploy: ${{ github.ref_name == 'main' }}`
@@ -186,15 +187,15 @@ docs = [
 
 ```yaml
 jobs:
-  docs:
-    uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
-    with:
-      use-pyproject: true
-      extras: docs # → uv sync --extra docs
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    docs:
+        uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
+        with:
+            use-pyproject: true
+            extras: docs # → uv sync --extra docs
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
 ```
 
 ### Force `pyproject.toml` with a dependency group (PEP 735)
@@ -214,15 +215,15 @@ docs = [
 
 ```yaml
 jobs:
-  docs:
-    uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
-    with:
-      use-pyproject: true
-      extras: docs # → uv sync --group docs
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    docs:
+        uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
+        with:
+            use-pyproject: true
+            extras: docs # → uv sync --group docs
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
 ```
 
 The workflow automatically inspects `pyproject.toml` to determine whether
@@ -234,32 +235,32 @@ in either section, a warning is emitted and plain `uv sync` is run.
 
 ```yaml
 jobs:
-  docs:
-    uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
-    with:
-      deploy: false
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    docs:
+        uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
+        with:
+            deploy: false
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
 ```
 
 ### Use the deployed URL in a downstream job
 
 ```yaml
 jobs:
-  docs:
-    uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    docs:
+        uses: MetOffice/growss/.github/workflows/sphinx-docs.yaml@main
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
 
-  notify:
-    needs: docs
-    runs-on: ubuntu-24.04
-    steps:
-      - run: echo "Docs published at ${{ needs.docs.outputs.pages-url }}"
+    notify:
+        needs: docs
+        runs-on: ubuntu-24.04
+        steps:
+            - run: echo "Docs published at ${{ needs.docs.outputs.pages-url }}"
 ```
 
 ## Dependency Resolution
