@@ -349,7 +349,7 @@ jobs:
           DOCS_DIR: ${{ env.DOCS_DIR }}
           SOURCE_DIR: ${{ env.SOURCE_DIR }}
           BUILD_DIR: ${{ env.BUILD_DIR }}
-          DEPLOY: ${{ env.DEPLOY }}
+          DEPLOY: ${{ inputs.deploy }}
           DO_DEPLOY: ${{ env.DO_DEPLOY }}
         run: |
           # Status icon
