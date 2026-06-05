@@ -29,9 +29,10 @@ jobs:
 
     steps:
       - name: Checkout Branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
       - name: Find broken symlinks
         run: |
           broken_links=$(find . -path '.git' -prune -o -xtype l -printf '%p -> %l\n' || true)

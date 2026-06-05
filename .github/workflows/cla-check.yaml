@@ -27,16 +27,19 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout Base Branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
+          persist-credentials: false
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.ref }}
           path: base_branch
 
       - name: Validate Author Username
         id: validate_author
+        env:
+          PR_AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
         run: |
-          AUTHOR="${{ github.event.pull_request.user.login }}"
+          AUTHOR="$PR_AUTHOR_LOGIN"
           # GitHub usernames: alphanumeric + hyphen, 1-39 chars,
           # cannot start/end with hyphen, cannot contain consecutive hyphens
           if [[ ! "$AUTHOR" =~ ^[a-zA-Z0-9]([a-zA-Z0-9]|-[a-zA-Z0-9]){0,37}[a-zA-Z0-9]?$ ]]; then
@@ -50,8 +53,10 @@ jobs:
       - name: Determine if contributor exists in base
         id: check_contributor_base
         working-directory: ./base_branch
+        env:
+          VALIDATED_AUTHOR: ${{ steps.validate_author.outputs.validated_author }}
         run: |
-          AUTHOR="${{ steps.validate_author.outputs.validated_author }}"
+          AUTHOR="$VALIDATED_AUTHOR"
           if [ -f "CONTRIBUTORS.md" ]; then
             if grep -qP "^\s*\|\s*\Q$AUTHOR\E\s*\|" CONTRIBUTORS.md; then
               echo "on_base=true" >> $GITHUB_OUTPUT
@@ -67,17 +72,19 @@ jobs:
           fi
 
       - name: Checkout PR Branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr_branch
 
       - name: Determine if contributor exists in PR branch
         id: check_contributor_pr
         working-directory: pr_branch
+        env:
+          AUTHOR: ${{ steps.validate_author.outputs.validated_author }}
         run: |
-          AUTHOR="${{ steps.validate_author.outputs.validated_author }}"
           if [ -f "CONTRIBUTORS.md" ]; then
             # if grep -qE "\|\s*$AUTHOR\s*\|" CONTRIBUTORS.md; then
             if grep -qP "^\s*\|\s*\Q$AUTHOR\E\s*\|" CONTRIBUTORS.md; then
@@ -108,10 +115,11 @@ jobs:
       - name: Checkout Merge Branch
         if: env.merge_ref_defined == 'true'
         id: checkout_merge
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
           ref: "refs/pull/${{ github.event.number }}/merge"
           path: merge_branch
 
@@ -124,7 +132,7 @@ jobs:
           else
             cd merge_branch || exit 1
 
-            git fetch origin "${{ github.event.pull_request.base.ref }}"
+            git fetch origin "$GITHUB_BASE_REF"
 
             # Only check for exact CONTRIBUTORS.md file (not subdirectories)
             CHANGED_FILES=$(git diff --name-only origin/$GITHUB_BASE_REF -- CONTRIBUTORS.md)
@@ -140,16 +148,21 @@ jobs:
 
       # -- Step 3: Manage PR Labels, Comments, and Final Status (Consolidated)
       - name: Manage CLA Status, Labels, and Comments
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd  # v8.0.0
         # Using 'always()' here so this step runs regardless of previous
         # success/failure to manage labels correctly
         if: always()
+        env:
+          SIGNED_ON_BASE: ${{ steps.check_contributor_base.outputs.on_base }}
+          SIGNED_ON_PR: ${{ steps.check_contributor_pr.outputs.on_pr }}
+          CONTRIBUTORS_MODIFIED: ${{ steps.check_contributors_modified.outputs.modified }}
+          CLA_URL: ${{ inputs.cla-url }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const signedOnBase = '${{ steps.check_contributor_base.outputs.on_base }}' === 'true';
-            const signedOnPr = '${{ steps.check_contributor_pr.outputs.on_pr }}' === 'true';
-            const contributorsModified = '${{ steps.check_contributors_modified.outputs.modified }}' === 'true';
+            const signedOnBase = process.env.SIGNED_ON_BASE === 'true';
+            const signedOnPr = process.env.SIGNED_ON_PR === 'true';
+            const contributorsModified = process.env.CONTRIBUTORS_MODIFIED === 'true';
             const issue_number = context.issue.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -161,7 +174,7 @@ jobs:
               process.exit(1);
             }
 
-            const claUrl = '${{ inputs.cla-url }}';
+            const claUrl = process.env.CLA_URL;
             // Validate CLA URL
             try {
               const url = new URL(claUrl);

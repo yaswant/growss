@@ -41,10 +41,12 @@ jobs:
     steps:
       # Required as running from the workflow_run trigger
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Download PR data artifact
-        uses: actions/github-script@v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -187,6 +189,8 @@ jobs:
       - name: Update project tracking
         env:
           GH_TOKEN: ${{ secrets.PROJECT_ACTION_PAT }}
+          PROJECT_ORG: ${{ inputs.project_org }}
+          PROJECT_NUMBER: ${{ inputs.project_number }}
         run: |
           # Get project data
           project_data=$(gh api graphql -f query='
@@ -202,7 +206,7 @@ jobs:
                   }
                 }
               }
-            }' -f org=${{ inputs.project_org }} -F number=${{ inputs.project_number }})
+            }' -f org="$PROJECT_ORG" -F number="$PROJECT_NUMBER")
 
           project_id=$(echo "$project_data" | jq -r '.data.organization.projectV2.id')
           status_field_id=$(echo "$project_data" | jq -r '.data.organization.projectV2.fields.nodes[] | select(.name== "Status") | .id')
