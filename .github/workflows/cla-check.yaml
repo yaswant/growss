@@ -103,14 +103,25 @@ jobs:
         id: check_merge_ref
         working-directory: ./base_branch
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ref="refs/pull/${{ github.event.number }}/merge"
-          hash=$(git ls-remote origin $ref)
-          if [[ -z $hash ]]; then
-            echo "merge_ref_defined=false" >> $GITHUB_ENV
-          else
+          # Use gh api to query pull request metadata directly
+          # without network git ls-remote authentication
+          mergeable=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }} --jq ".mergeable" 2>/dev/null || echo "undefined")
+          if [ "$mergeable" != "undefined" ]; then
             echo "merge_ref_defined=true" >> $GITHUB_ENV
+          else
+            echo "merge_ref_defined=false" >> $GITHUB_ENV
           fi
+        # run: |
+        #   ref="refs/pull/${{ github.event.number }}/merge"
+        #   hash=$(git ls-remote origin $ref)
+        #   if [[ -z $hash ]]; then
+        #     echo "merge_ref_defined=false" >> $GITHUB_ENV
+        #   else
+        #     echo "merge_ref_defined=true" >> $GITHUB_ENV
+        #   fi
 
       - name: Checkout Merge Branch
         if: env.merge_ref_defined == 'true'
