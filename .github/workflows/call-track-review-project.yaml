@@ -28,8 +28,8 @@ jobs:
       )
     # Granular permissions are safely locked directly to this specific execution context
     permissions:
-      actions: read # Required to view the status of the upstream triggered workflow run
-      repository-projects: write # Required to add or mutate tasks inside GitHub Project 376
+      actions: read  # Required to view the status of the upstream triggered workflow run
+      repository-projects: write  # Required to add or mutate tasks inside GitHub Project 376
     uses: MetOffice/growss/.github/workflows/track-review-project.yaml@main
     secrets: inherit
     # Optional inputs (with default values)

@@ -17,6 +17,6 @@ permissions: {}
 jobs:
   trigger_project_workflow:
     permissions:
-      contents: read # Required for checking out code or referencing internal workflow actions
+      contents: read  # Required for checking out code or referencing internal workflow actions
     uses: MetOffice/growss/.github/workflows/trigger-project-workflow.yaml@main
     secrets: inherit
