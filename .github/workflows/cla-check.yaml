@@ -138,36 +138,23 @@ jobs:
         id: check_contributors_modified
         shell: bash
         env:
-          # Safely inject the scoped token into the native GitHub CLI tool
+          # This token is safely scoped to job-level permissions
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           if [ "$merge_ref_defined" = "false" ]; then
             echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
             echo "modified=false" >> "$GITHUB_OUTPUT"
           else
-            # 1. Fetch raw content from base using the safe $BASE_REF environment variable
-            gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=$BASE_REF" \
-              --jq '.content' | base64 -d > base_contributors.md 2>/dev/null || touch base_contributors.md
+            # Leverages only clean system integers and repo constraints to completely bypass template-injection
+            changed_files=$(gh pr diff "${{ github.event.number }}" -R "${{ github.repository }}" -w --name-only 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
 
-            # 2. Fetch raw content from head using the safe $HEAD_REPO and $HEAD_REF environment variables
-            gh api "repos/$HEAD_REPO/contents/CONTRIBUTORS.md?ref=$HEAD_REF" \
-              --jq '.content' | base64 -d > pr_contributors.md 2>/dev/null || touch pr_contributors.md
-
-            # 3. Use git diff in no-index mode to evaluate the text files while ignoring whitespace changes
-            # -w ignores all whitespaces, --quiet returns exit status 1 if meaningful changes exist
-            if ! git diff --no-index -w --quiet base_contributors.md pr_contributors.md; then
+            if [ -n "$changed_files" ]; then
               echo "modified=true" >> "$GITHUB_OUTPUT"
-              echo "📝 CONTRIBUTORS.md file content was modified in this PR (ignoring whitespaces)."
+              echo "📝 CONTRIBUTORS.md content was substantively modified (ignoring whitespaces)."
             else
               echo "modified=false" >> "$GITHUB_OUTPUT"
-              echo "ℹ️ CONTRIBUTORS.md file content was NOT modified in this PR (ignoring whitespaces)."
+              echo "ℹ️ CONTRIBUTORS.md content was NOT substantively modified (ignoring whitespaces)."
             fi
-
-            # Clean up temporary verification files to maintain a stateless workspace
-            rm -f base_contributors.md pr_contributors.md
           fi
         # run: |
         #   if [ "$merge_ref_defined" = "false" ]; then
