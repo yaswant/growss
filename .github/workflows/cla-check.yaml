@@ -136,26 +136,48 @@ jobs:
 
       - name: Check if CONTRIBUTORS.md was modified in PR
         id: check_contributors_modified
+        shell: bash
+        env:
+          # Safely inject the scoped token into the native GitHub CLI tool
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ "$merge_ref_defined" == "false" ]]; then
+          if [ "$merge_ref_defined" = "false" ]; then
             echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
-            echo "modified=false" >> $GITHUB_OUTPUT
+            echo "modified=false" >> "$GITHUB_OUTPUT"
           else
-            cd merge_branch || exit 1
+            # Call GitHub Files API directly to check PR modifications without
+            # running local network git fetches
+            # Filtering precisely for the CONTRIBUTORS.md file signature
+            has_modification=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" --paginate --jq '.[].filename' 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
 
-            git fetch origin "$GITHUB_BASE_REF"
-
-            # Only check for exact CONTRIBUTORS.md file (not subdirectories)
-            CHANGED_FILES=$(git diff --name-only origin/$GITHUB_BASE_REF -- CONTRIBUTORS.md)
-
-            if [ -n "$CHANGED_FILES" ]; then
-              echo "modified=true" >> $GITHUB_OUTPUT
+            if [ -n "$has_modification" ]; then
+              echo "modified=true" >> "$GITHUB_OUTPUT"
               echo "📝 CONTRIBUTORS.md file was modified in this PR."
             else
-              echo "modified=false" >> $GITHUB_OUTPUT
+              echo "modified=false" >> "$GITHUB_OUTPUT"
               echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
             fi
           fi
+        # run: |
+        #   if [[ "$merge_ref_defined" == "false" ]]; then
+        #     echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
+        #     echo "modified=false" >> $GITHUB_OUTPUT
+        #   else
+        #     cd merge_branch || exit 1
+
+        #     git fetch origin "$GITHUB_BASE_REF"
+
+        #     # Only check for exact CONTRIBUTORS.md file (not subdirectories)
+        #     CHANGED_FILES=$(git diff --name-only origin/$GITHUB_BASE_REF -- CONTRIBUTORS.md)
+
+        #     if [ -n "$CHANGED_FILES" ]; then
+        #       echo "modified=true" >> $GITHUB_OUTPUT
+        #       echo "📝 CONTRIBUTORS.md file was modified in this PR."
+        #     else
+        #       echo "modified=false" >> $GITHUB_OUTPUT
+        #       echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
+        #     fi
+        #   fi
 
       # -- Step 3: Manage PR Labels, Comments, and Final Status (Consolidated)
       - name: Manage CLA Status, Labels, and Comments
