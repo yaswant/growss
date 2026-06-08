@@ -6,7 +6,7 @@ Code Reviewer: <!-- CR id, filled by SSD -->
 
 <!-- Provide a brief description of the changes in this PR, including any notes useful for reviewers -->
 
-## :clipboard: Code Quality Checklist
+## :white_check_mark: Code Quality Checklist
 
 (_Some checks are automatically carried out via the CI pipeline_)
 
@@ -21,6 +21,6 @@ Code Reviewer: <!-- CR id, filled by SSD -->
 
 <!-- If AI has been used, please provide more details here -->
 
-## :eyes: Code Review
+## :computer: Code Review
 
 - [ ] The changes are appropriate and testing has been sufficient
