@@ -140,60 +140,24 @@ jobs:
         env:
           # This token is safely scoped to job-level permissions
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           if [ "$merge_ref_defined" = "false" ]; then
             echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
             echo "modified=false" >> "$GITHUB_OUTPUT"
           else
-            # 1. Fetch the base reference from the live repository API securely using the environment variable
-            gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=$BASE_REF" \
-              --jq '.content' | base64 -d > base_contributors.md 2>/dev/null || touch base_contributors.md
+            # Call GitHub Files API directly to check PR modifications without
+            # running local network git fetches
+            # Filtering precisely for the CONTRIBUTORS.md file signature
+            has_modification=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" --paginate --jq '.[].filename' 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
 
-            # 2. Fetch the incoming pull request's active patched variant file data
-            gh pr diff "${{ github.event.number }}" -R "${{ github.repository }}" > pr_patch.diff 2>/dev/null || true
-
-            # Create a target file copy to isolate the changes
-            cp base_contributors.md pr_contributors.md
-
-            # Apply the patch file changes specifically for CONTRIBUTORS.md if present in the diff
-            if grep -q "b/CONTRIBUTORS.md" pr_patch.diff; then
-              # Isolate the file's patch segment and apply it to our temporary file
-              git apply --include="CONTRIBUTORS.md" pr_patch.diff 2>/dev/null || true
-              # Update our tracking copy with the patched file contents
-              [ -f CONTRIBUTORS.md ] && mv CONTRIBUTORS.md pr_contributors.md
-            fi
-
-            # Perform a strict content-only comparison while safely ignoring all whitespace adjustments
-            if ! git diff --no-index -w --quiet base_contributors.md pr_contributors.md; then
+            if [ -n "$has_modification" ]; then
               echo "modified=true" >> "$GITHUB_OUTPUT"
-              echo "📝 CONTRIBUTORS.md content was substantives modified."
+              echo "📝 CONTRIBUTORS.md file was modified in this PR."
             else
               echo "modified=false" >> "$GITHUB_OUTPUT"
-              echo "ℹ️ CONTRIBUTORS.md content was NOT substantives modified (whitespace only or unchanged)."
+              echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
             fi
-
-            # Clean up disk workspace to prevent cache pollution leaks
-            rm -f base_contributors.md pr_contributors.md pr_patch.diff CONTRIBUTORS.md
           fi
-        # run: |
-        #   if [ "$merge_ref_defined" = "false" ]; then
-        #     echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
-        #     echo "modified=false" >> "$GITHUB_OUTPUT"
-        #   else
-        #     # Call GitHub Files API directly to check PR modifications without
-        #     # running local network git fetches
-        #     # Filtering precisely for the CONTRIBUTORS.md file signature
-        #     has_modification=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" --paginate --jq '.[].filename' 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
-
-        #     if [ -n "$has_modification" ]; then
-        #       echo "modified=true" >> "$GITHUB_OUTPUT"
-        #       echo "📝 CONTRIBUTORS.md file was modified in this PR."
-        #     else
-        #       echo "modified=false" >> "$GITHUB_OUTPUT"
-        #       echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
-        #     fi
-        #   fi
 
         # run: |
         #   if [[ "$merge_ref_defined" == "false" ]]; then
