@@ -114,14 +114,6 @@ jobs:
           else
             echo "merge_ref_defined=false" >> $GITHUB_ENV
           fi
-        # run: |
-        #   ref="refs/pull/${{ github.event.number }}/merge"
-        #   hash=$(git ls-remote origin $ref)
-        #   if [[ -z $hash ]]; then
-        #     echo "merge_ref_defined=false" >> $GITHUB_ENV
-        #   else
-        #     echo "merge_ref_defined=true" >> $GITHUB_ENV
-        #   fi
 
       - name: Checkout Merge Branch
         if: env.merge_ref_defined == 'true'
@@ -140,47 +132,66 @@ jobs:
         env:
           # This token is safely scoped to job-level permissions
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           if [ "$merge_ref_defined" = "false" ]; then
-            echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
+            echo "::warning::Merge conflicts detected. The CONTRIBUTORS.md modification check was skipped, but the workflow has been allowed to pass. Please resolve conflicts."
             echo "modified=false" >> "$GITHUB_OUTPUT"
           else
-            # Call GitHub Files API directly to check PR modifications without
-            # running local network git fetches
-            # Filtering precisely for the CONTRIBUTORS.md file signature
-            has_modification=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" --paginate --jq '.[].filename' 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
+            # 1. Fetch raw CONTRIBUTORS.md from the base branch path
+            gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=$BASE_REF" \
+              --jq '.content' | base64 -d > base_raw.txt 2>/dev/null || touch base_raw.txt
 
-            if [ -n "$has_modification" ]; then
+            # 2. Fetch raw CONTRIBUTORS.md from the incoming PR head branch path
+            gh api "repos/$HEAD_REPO/contents/CONTRIBUTORS.md?ref=$HEAD_REF" \
+              --jq '.content' | base64 -d > pr_raw.txt 2>/dev/null || touch pr_raw.txt
+
+            # 3. Clean and normalise files completely using pure shell primitives
+            # This strips all spaces, tabs, newlines, and carriage returns, squashing the file into a single string
+            tr -d '[:space:]' < base_raw.txt > base_clean.txt 2>/dev/null || touch base_clean.txt
+            tr -d '[:space:]' < pr_raw.txt > pr_clean.txt 2>/dev/null || touch pr_clean.txt
+
+            # 4. Perform a direct text comparison on the squashed data
+            # cmp returns exit code 0 if identical, or 1 if any content characters differ
+            if ! cmp -s base_clean.txt pr_clean.txt; then
               echo "modified=true" >> "$GITHUB_OUTPUT"
-              echo "📝 CONTRIBUTORS.md file was modified in this PR."
+              echo "📝 CONTRIBUTORS.md content was substantively modified (additions or deletions detected)."
             else
               echo "modified=false" >> "$GITHUB_OUTPUT"
-              echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
+              echo "ℹ️ CONTRIBUTORS.md content was NOT substantively modified (whitespace only or unchanged)."
             fi
+
+            # Clean up the localised workspace to keep the step stateless
+            rm -f base_raw.txt pr_raw.txt base_clean.txt pr_clean.txt
           fi
+      # - name: Check if CONTRIBUTORS.md was modified in PR
+      #   id: check_contributors_modified
+      #   shell: bash
+      #   env:
+      #     # This token is safely scoped to job-level permissions
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     if [ "$merge_ref_defined" = "false" ]; then
+      #       echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
+      #       echo "modified=false" >> "$GITHUB_OUTPUT"
+      #     else
+      #       # Call GitHub Files API directly to check PR modifications without
+      #       # running local network git fetches
+      #       # Filtering precisely for the CONTRIBUTORS.md file signature
+      #       has_modification=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" --paginate --jq '.[].filename' 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
 
-        # run: |
-        #   if [[ "$merge_ref_defined" == "false" ]]; then
-        #     echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
-        #     echo "modified=false" >> $GITHUB_OUTPUT
-        #   else
-        #     cd merge_branch || exit 1
+      #       if [ -n "$has_modification" ]; then
+      #         echo "modified=true" >> "$GITHUB_OUTPUT"
+      #         echo "📝 CONTRIBUTORS.md file was modified in this PR."
+      #       else
+      #         echo "modified=false" >> "$GITHUB_OUTPUT"
+      #         echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
+      #       fi
+      #     fi
 
-        #     git fetch origin "$GITHUB_BASE_REF"
-
-        #     # Only check for exact CONTRIBUTORS.md file (not subdirectories)
-        #     CHANGED_FILES=$(git diff --name-only origin/$GITHUB_BASE_REF -- CONTRIBUTORS.md)
-
-        #     if [ -n "$CHANGED_FILES" ]; then
-        #       echo "modified=true" >> $GITHUB_OUTPUT
-        #       echo "📝 CONTRIBUTORS.md file was modified in this PR."
-        #     else
-        #       echo "modified=false" >> $GITHUB_OUTPUT
-        #       echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
-        #     fi
-        #   fi
-
-      # -- Step 3: Manage PR Labels, Comments, and Final Status (Consolidated)
+      # -- Manage PR Labels, Comments, and Final Status (Consolidated)
       - name: Manage CLA Status, Labels, and Comments
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd  # v8.0.0
         # Using 'always()' here so this step runs regardless of previous
