@@ -88,17 +88,19 @@ on:
         description: 'URL of the deployed GitHub Pages site'
         value: ${{ jobs.build-and-deploy.outputs.pages-url }}
 
-permissions:
-  contents: read
-  pages: write  # Required for deploying to GitHub Pages
-  id-token: write  # Required for authentication in uv sync when using pyproject.toml
+permissions: {}
 
 jobs:
   build-and-deploy:
+    name: Build and Deploy
     runs-on: ${{ inputs.runner }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     outputs:
       pages-url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write  # Required for deploying to GitHub Pages
+      id-token: write  # Required for authentication in uv sync when using pyproject.toml
     env:
       PYTHON_VRSN: ${{ inputs.python-version }}
       VENV_PATH: ${{ inputs.venv-path }}
