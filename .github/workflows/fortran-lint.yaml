@@ -73,7 +73,8 @@ jobs:
     name: Fortran
     runs-on: ${{ inputs.runner }}
     timeout-minutes: ${{ inputs.timeout }}
-
+    permissions:
+      contents: read  # Required to check out code and scan files using fortitude linter
     env:
       UV_PYTHON: ${{ inputs.python-version }}
 
@@ -95,11 +96,18 @@ jobs:
           FILE_EXTENSIONS: ${{ inputs.file-extensions }}
           CONFIG_PATH: ${{ inputs.config-path }}
           SOURCE_PATH: ${{ inputs.source-path }}
+          RESPECT_GITIGNORE: ${{ inputs.respect-gitignore }}
+          SHOW_FIXES: ${{ inputs.show-fixes }}
+          SHOW_STATISTICS: ${{ inputs.show-statistics }}
         run: |
+          ARGS=()
+
+          [ "$RESPECT_GITIGNORE" = "true" ] && ARGS+=("--respect-gitignore")
+          [ "$SHOW_FIXES" = "true" ] && ARGS+=("--show-fixes")
+          [ "$SHOW_STATISTICS" = "true" ] && ARGS+=("--statistics")
+
           uvx --from "fortitude-lint==$FORTITUDE_VERSION" fortitude check \
-            ${{ inputs.respect-gitignore && '--respect-gitignore' || '' }} \
-            ${{ inputs.show-fixes && '--show-fixes' || '' }} \
-            ${{ inputs.show-statistics && '--statistics' || '' }} \
+            "${ARGS[@]}" \
             "--file-extensions=$FILE_EXTENSIONS" \
             ${CONFIG_PATH:+"--config-file=$CONFIG_PATH"} \
             "$SOURCE_PATH"

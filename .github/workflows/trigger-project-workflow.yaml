@@ -12,14 +12,15 @@ name: Trigger Review Project
 on:
   workflow_call:
 
-permissions:
-  contents: read
-  pull-requests: write
+permissions: {}
 
 jobs:
   trigger_project:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read  # Required to evaluate metadata from the triggering GitHub event context
+      pull-requests: write  # Required to modify or comment on pull requests within this pipeline process
     env:
       PR_NUM: ${{ github.event.pull_request.number }}
       PR_ID: ${{ github.event.pull_request.node_id }}
