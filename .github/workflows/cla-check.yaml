@@ -140,24 +140,54 @@ jobs:
         env:
           # Safely inject the scoped token into the native GitHub CLI tool
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           if [ "$merge_ref_defined" = "false" ]; then
             echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
             echo "modified=false" >> "$GITHUB_OUTPUT"
           else
-            # Call GitHub Files API directly to check PR modifications without
-            # running local network git fetches
-            # Filtering precisely for the CONTRIBUTORS.md file signature
-            has_modification=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" --paginate --jq '.[].filename' 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
+            # 1. Fetch raw content from base using the safe $BASE_REF environment variable
+            gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=$BASE_REF" \
+              --jq '.content' | base64 -d > base_contributors.md 2>/dev/null || touch base_contributors.md
 
-            if [ -n "$has_modification" ]; then
+            # 2. Fetch raw content from head using the safe $HEAD_REPO and $HEAD_REF environment variables
+            gh api "repos/$HEAD_REPO/contents/CONTRIBUTORS.md?ref=$HEAD_REF" \
+              --jq '.content' | base64 -d > pr_contributors.md 2>/dev/null || touch pr_contributors.md
+
+            # 3. Use git diff in no-index mode to evaluate the text files while ignoring whitespace changes
+            # -w ignores all whitespaces, --quiet returns exit status 1 if meaningful changes exist
+            if ! git diff --no-index -w --quiet base_contributors.md pr_contributors.md; then
               echo "modified=true" >> "$GITHUB_OUTPUT"
-              echo "📝 CONTRIBUTORS.md file was modified in this PR."
+              echo "📝 CONTRIBUTORS.md file content was modified in this PR (ignoring whitespaces)."
             else
               echo "modified=false" >> "$GITHUB_OUTPUT"
-              echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
+              echo "ℹ️ CONTRIBUTORS.md file content was NOT modified in this PR (ignoring whitespaces)."
             fi
+
+            # Clean up temporary verification files to maintain a stateless workspace
+            rm -f base_contributors.md pr_contributors.md
           fi
+        # run: |
+        #   if [ "$merge_ref_defined" = "false" ]; then
+        #     echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
+        #     echo "modified=false" >> "$GITHUB_OUTPUT"
+        #   else
+        #     # Call GitHub Files API directly to check PR modifications without
+        #     # running local network git fetches
+        #     # Filtering precisely for the CONTRIBUTORS.md file signature
+        #     has_modification=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" --paginate --jq '.[].filename' 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
+
+        #     if [ -n "$has_modification" ]; then
+        #       echo "modified=true" >> "$GITHUB_OUTPUT"
+        #       echo "📝 CONTRIBUTORS.md file was modified in this PR."
+        #     else
+        #       echo "modified=false" >> "$GITHUB_OUTPUT"
+        #       echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
+        #     fi
+        #   fi
+
         # run: |
         #   if [[ "$merge_ref_defined" == "false" ]]; then
         #     echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
