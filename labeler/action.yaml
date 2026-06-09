@@ -36,9 +36,12 @@ runs:
   steps:
     - name: Validate inputs
       shell: python
+      env:
+        ACTION: ${{ inputs.action }}
       run: |
+        import os
         action_opts = ["remove", "add"]
-        action = "${{ inputs.action }}"
+        action = os.environ["ACTION"]
         if action not in action_opts:
             raise ValueError(f"Action has to be one of {action_opts}.")
 
@@ -47,23 +50,29 @@ runs:
       shell: bash
       run: |
         set -e
-        if gh issue --repo "${{ inputs.repository }}" view "${{ inputs.issue }}" > /dev/null 2>&1; then
-          gh issue --repo "${{ inputs.repository }}" edit "${{ inputs.issue }}" --remove-label "${{ inputs.label }}"
+        if gh issue --repo "$REPOSITORY" view "$ISSUE" > /dev/null 2>&1; then
+          gh issue --repo "$REPOSITORY" edit "$ISSUE" --remove-label "$LABEL"
         else
-          gh pr --repo "${{ inputs.repository }}" edit "${{ inputs.issue }}" --remove-label "${{ inputs.label }}"
+          gh pr --repo "$REPOSITORY" edit "$ISSUE" --remove-label "$LABEL"
         fi
       env:
         GH_TOKEN: ${{ inputs.token }}
+        REPOSITORY: ${{ inputs.repository }}
+        ISSUE: ${{ inputs.issue }}
+        LABEL: ${{ inputs.label }}
 
     - name: Add label `${{ inputs.label }}` to issue ${{ inputs.issue }}
       if: ${{ inputs.action == 'add' }}
       shell: bash
       run: |
         set -e
-        if gh issue --repo "${{ inputs.repository }}" view "${{ inputs.issue }}" > /dev/null 2>&1; then
-          gh issue --repo "${{ inputs.repository }}" edit "${{ inputs.issue }}" --add-label "${{ inputs.label }}"
+        if gh issue --repo "$REPOSITORY" view "$ISSUE" > /dev/null 2>&1; then
+          gh issue --repo "$REPOSITORY" edit "$ISSUE" --add-label "$LABEL"
         else
-          gh pr --repo "${{ inputs.repository }}" edit "${{ inputs.issue }}" --add-label "${{ inputs.label }}"
+          gh pr --repo "$REPOSITORY" edit "$ISSUE" --add-label "$LABEL"
         fi
       env:
         GH_TOKEN: ${{ inputs.token }}
+        REPOSITORY: ${{ inputs.repository }}
+        ISSUE: ${{ inputs.issue }}
+        LABEL: ${{ inputs.label }}
