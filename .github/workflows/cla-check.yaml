@@ -18,12 +18,14 @@ on:
         type: string
         default: 'https://github.com/MetOffice/Momentum/blob/main/CLA.md'
 
-permissions:
-  contents: read
-  pull-requests: write  # Required to add labels and comments
+permissions: {}
 
 jobs:
   check-cla:
+    name: Manage CLA
+    permissions:
+      contents: read
+      pull-requests: write  # Required to add labels and comments
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout Base Branch
@@ -105,10 +107,12 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
           # Use gh api to query pull request metadata directly
           # without network git ls-remote authentication
-          mergeable=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.number }} --jq ".mergeable" 2>/dev/null || echo "undefined")
+          mergeable=$(gh api "repos/$REPOSITORY/pulls/$PR_NUMBER" --jq ".mergeable" 2>/dev/null || echo "undefined")
           if [ "$mergeable" != "undefined" ]; then
             echo "merge_ref_defined=true" >> $GITHUB_ENV
           else
@@ -132,6 +136,7 @@ jobs:
         env:
           # This token is safely scoped to job-level permissions
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           # Use the safe PR number context to completely avoid the private fork 404
           PR_NUMBER: ${{ github.event.number }}
@@ -141,12 +146,12 @@ jobs:
             echo "modified=false" >> "$GITHUB_OUTPUT"
           else
             # 1. Fetch raw CONTRIBUTORS.md from the base branch path securely
-            gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=$BASE_REF" \
+            gh api "repos/$REPOSITORY/contents/CONTRIBUTORS.md?ref=$BASE_REF" \
               --jq '.content' | base64 -d > base_raw.txt 2>/dev/null || touch base_raw.txt
 
             # 2. Fetch CONTRIBUTORS.md from the repository using the unified PR head reference.
             # This completely bypasses the private fork 404 authentication barrier.
-            gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=refs/pull/$PR_NUMBER/head" \
+            gh api "repos/$REPOSITORY/contents/CONTRIBUTORS.md?ref=refs/pull/$PR_NUMBER/head" \
               --jq '.content' | base64 -d > pr_raw.txt 2>/dev/null || touch pr_raw.txt
 
             # 3. Clean and normalise files using pure shell primitives
