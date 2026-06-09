@@ -34,7 +34,7 @@ jobs:
     secrets: inherit
     # Optional inputs (with default values)
     with:
-      runner: "ubuntu-22.04"
+      runner: "ubuntu-24.04"
       project_org: "MetOffice"
       project_number: 376
 
