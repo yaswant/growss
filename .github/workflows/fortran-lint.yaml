@@ -68,6 +68,10 @@ on:
         type: boolean
         default: false
 
+# Global baseline configuration: prevents default read/write fallback permissions
+permissions:
+  contents: read  # Required to check out code and scan files using fortitude linter
+
 jobs:
   fortran-linting:
     name: Fortran

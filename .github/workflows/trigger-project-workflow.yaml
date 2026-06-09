@@ -16,6 +16,7 @@ permissions: {}
 
 jobs:
   trigger_project:
+    name: Trigger Project
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

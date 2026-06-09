@@ -20,10 +20,12 @@ on:
         type: number
         default: 5
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   validate_symlinks:
+    name: Validate Symlinks
     runs-on: ${{ inputs.runner }}
     timeout-minutes: ${{ inputs.timeout }}
 

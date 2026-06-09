@@ -40,11 +40,18 @@ on:
         type: number
         default: 5
 
+permissions:
+  contents: read
+
 jobs:
   build-sphinx-docs:
     name: Build Sphinx Docs
     runs-on: ${{ inputs.runner }}
     timeout-minutes: ${{ inputs.timeout }}
+    permissions:
+      contents: read  # Required to read repository file configurations
+      pages: write  # Required to deploy to GitHub Pages
+
     env:
       DOCS_DIR: ${{ inputs.docs-directory }}
       REQS_FILE: ${{ inputs.requirements }}

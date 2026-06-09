@@ -21,8 +21,8 @@ on:
 permissions: {}
 
 jobs:
-  check-cla:
-    name: Manage CLA
+  manage-cla:
+    name: check-cla
     permissions:
       contents: read
       pull-requests: write  # Required to add labels and comments
