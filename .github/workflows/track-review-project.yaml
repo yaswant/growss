@@ -25,8 +25,13 @@ on:
         required: false
         type: number
         default: 376  # Simulation Systems Review Tracker
+    secrets:
+      PROJECT_ACTION_PAT:
+        description: 'The PAT used to authorize changes to Organization Project Board 376'
+        required: true
 
-permissions: {}
+permissions:
+  contents: read  # Required to check out code or parse files safely
 
 jobs:
   track_project:
@@ -59,7 +64,7 @@ jobs:
             });
 
             let matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
-              return artifact.name == "context.json"
+              return artifact.name == "context"
             })[0];
 
             let download = await github.rest.actions.downloadArtifact({
