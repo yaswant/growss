@@ -26,15 +26,17 @@ on:
         type: number
         default: 376  # Simulation Systems Review Tracker
 
-permissions:
-  actions: read
-  contents: read
-  pull-requests: write
+permissions: {}
 
 jobs:
   track_project:
+    name: Track Review Project
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 5
+    permissions:
+      actions: read  # Required to query the artifact lists
+      contents: read # Required to check out code or parse files safely
+      pull-requests: write  # Required to assign authors or append metadata notes directly on the pull request target
     env:
       REPO: ${{ github.repository }}
 
