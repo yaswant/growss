@@ -109,7 +109,7 @@ permissions directly to the job:
 
 ```yaml
 permissions:
-  contents: read    # To checkout repository code
+  contents: read  # To checkout repository code
   pull-requests: write  # To add labels and post comments
 ```
 
