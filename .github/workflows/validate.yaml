@@ -75,7 +75,7 @@ jobs:
             -not -path "*.git/*" -not -path "*.venv/*" -print0
           )
           if [ ${#potential_files[@]} -eq 0 ]; then
-            echo "::info::No files found with matching pattern to inspect."
+            echo "::notice::No files found with matching pattern to inspect."
             exit 0
           fi
 
@@ -84,12 +84,12 @@ jobs:
             | xargs -0 file | grep "shell script" | cut -d: -f1 || true)
 
           if [ ${#shell_files[@]} -eq 0 ]; then
-            echo "::info::No shell scripts detected."
+            echo "::notice::No shell scripts detected."
             exit 0
           fi
 
           # Run shellcheck on discoverd files, treating warnings as errors
-          uv run shellcheck -S warning "${shell_files[@]}" && echo "::info::All checks passed!"
+          uv run shellcheck -S warning "${shell_files[@]}" && echo "✅ All checks passed!"
         continue-on-error: true
 
       - name: Actionlint
