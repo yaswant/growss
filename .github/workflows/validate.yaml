@@ -67,18 +67,29 @@ jobs:
         if: always()
         shell: bash
         run: |
+          # Identify potential shell scripts by looking for files with typical
+          # shell script extensions (.sh, .bash, .etc) or no extension, while excluding
+          # files in version control directories and virtual environments.
           mapfile -d '' potential_files < <(
             find . -type f \( -name "*.*sh" -o ! -name "*.*" \) \
             -not -path "*.git/*" -not -path "*.venv/*" -print0
           )
           if [ ${#potential_files[@]} -eq 0 ]; then
-            echo "No shell scripts to check."
+            echo "::info::No files found with matching pattern to inspect."
             exit 0
           fi
-          printf "%s\0" "${potential_files[@]}" \
-            | xargs -0 file | grep "shell script" | cut -d: -f1 \
-            | xargs -r uv run shellcheck -S warning \
-            && echo "All checks passed!"
+
+          # Extract shell scripts into an array, safely handling grep exit codes
+          mapfile -t shell_files < <(printf "%s\0" "${potential_files[@]}" \
+            | xargs -0 file | grep "shell script" | cut -d: -f1 || true)
+
+          if [ ${#shell_files[@]} -eq 0 ]; then
+            echo "::info::No shell scripts detected."
+            exit 0
+          fi
+
+          # Run shellcheck on discoverd files, treating warnings as errors
+          uv run shellcheck -S warning "${shell_files[@]}" && echo "::info::All checks passed!"
         continue-on-error: true
 
       - name: Actionlint
