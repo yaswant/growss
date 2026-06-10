@@ -16,7 +16,7 @@ on:
         default: 'documentation'
       requirements:
         description: 'Path to the requirements file to install dependencies from'
-        required: true
+        required: false
         type: string
         default: 'requirements.txt'
       sphinx-opts:

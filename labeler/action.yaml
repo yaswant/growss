@@ -35,15 +35,14 @@ runs:
   using: composite
   steps:
     - name: Validate inputs
-      shell: python
+      shell: bash
       env:
         ACTION: ${{ inputs.action }}
       run: |
-        import os
-        action_opts = ["remove", "add"]
-        action = os.environ["ACTION"]
-        if action not in action_opts:
-            raise ValueError(f"Action has to be one of {action_opts}.")
+        if [[ "$ACTION" != "remove" && "$ACTION" != "add" ]]; then
+          echo "::error::Action has to be one of ['remove', 'add']."
+          exit 1
+        fi
 
     - name: Remove label `${{ inputs.label }}` from issue ${{ inputs.issue }}
       if: ${{ inputs.action == 'remove' }}

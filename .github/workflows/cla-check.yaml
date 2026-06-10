@@ -61,15 +61,15 @@ jobs:
           AUTHOR="$VALIDATED_AUTHOR"
           if [ -f "CONTRIBUTORS.md" ]; then
             if grep -qP "^\s*\|\s*\Q$AUTHOR\E\s*\|" CONTRIBUTORS.md; then
-              echo "on_base=true" >> $GITHUB_OUTPUT
+              echo "on_base=true" >> "$GITHUB_OUTPUT"
               echo "🎉 $AUTHOR has already signed the CLA on base branch."
             else
-              echo "on_base=false" >> $GITHUB_OUTPUT
+              echo "on_base=false" >> "$GITHUB_OUTPUT"
               echo "⚠️ $AUTHOR not on base. Proceeding to check PR branch."
             fi
           else
             # If CONTRIBUTORS.md file doesn't exist, we must check PR branch
-            echo "on_base=undefined" >> $GITHUB_OUTPUT
+            echo "on_base=undefined" >> "$GITHUB_OUTPUT"
             echo "🔴 CONTRIBUTORS.md file does not exist on base. Proceeding to check PR branch."
           fi
 
@@ -90,14 +90,14 @@ jobs:
           if [ -f "CONTRIBUTORS.md" ]; then
             # if grep -qE "\|\s*$AUTHOR\s*\|" CONTRIBUTORS.md; then
             if grep -qP "^\s*\|\s*\Q$AUTHOR\E\s*\|" CONTRIBUTORS.md; then
-              echo "on_pr=true" >> $GITHUB_OUTPUT
+              echo "on_pr=true" >> "$GITHUB_OUTPUT"
               echo "✅ $AUTHOR is in the CONTRIBUTORS.md file on PR branch."
             else
-              echo "on_pr=false" >> $GITHUB_OUTPUT
+              echo "on_pr=false" >> "$GITHUB_OUTPUT"
               echo "⚠️ $AUTHOR is not in the CONTRIBUTORS.md file on PR branch."
             fi
           else
-            echo "on_pr=undefined" >> $GITHUB_OUTPUT
+            echo "on_pr=undefined" >> "$GITHUB_OUTPUT"
             echo "🔴 CONTRIBUTORS.md file does not exist on PR branch."
           fi
 
@@ -114,9 +114,9 @@ jobs:
           # without network git ls-remote authentication
           mergeable=$(gh api "repos/$REPOSITORY/pulls/$PR_NUMBER" --jq ".mergeable" 2>/dev/null || echo "undefined")
           if [ "$mergeable" != "undefined" ]; then
-            echo "merge_ref_defined=true" >> $GITHUB_ENV
+            echo "merge_ref_defined=true" >> "$GITHUB_ENV"
           else
-            echo "merge_ref_defined=false" >> $GITHUB_ENV
+            echo "merge_ref_defined=false" >> "$GITHUB_ENV"
           fi
 
       - name: Checkout Merge Branch

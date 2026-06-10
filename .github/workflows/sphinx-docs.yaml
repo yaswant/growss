@@ -208,7 +208,7 @@ jobs:
             ${{ runner.os }}-${{ env.PYTHON_VRSN }}-
 
       - name: Create virtual environment
-        run: uv venv --python ${PYTHON_VRSN} --allow-existing ${VENV_PATH}
+        run: uv venv --python "${PYTHON_VRSN}" --allow-existing "${VENV_PATH}"
 
       - name: Install dependencies from conf.py (extensions + html_theme)
         if: steps.detect-deps.outputs.source == 'conf'
@@ -285,7 +285,7 @@ jobs:
         run: echo "${GITHUB_WORKSPACE}/${VENV_PATH}/bin" >> "$GITHUB_PATH"
 
       - name: Lint Sphinx docs
-        run: sphinx-lint ${SOURCE_DIR}
+        run: sphinx-lint "${SOURCE_DIR}"
 
       - name: Detect Makefile in docs directory
         id: detect-makefile

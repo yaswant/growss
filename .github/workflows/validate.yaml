@@ -81,5 +81,18 @@ jobs:
             && echo "All checks passed!"
         continue-on-error: true
 
+      - name: Actionlint
+        if: always()
+        run: uv run actionlint -shellcheck "-S warning" .github/workflows/*.yaml
+
+      - name: Zizmor (GitHub Actions security)
+        if: always()
+        run: uv run zizmor .github/workflows/
+
+      - name: Markdown Lint
+        if: always()
+        run: |
+          uv run rumdl check .
+
       - name: Minimize uv cache
         run: uv cache prune --ci
