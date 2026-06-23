@@ -172,30 +172,6 @@ jobs:
             # Clean up the localised workspace
             rm -f base_raw.txt pr_raw.txt base_clean.txt pr_clean.txt
           fi
-      # - name: Check if CONTRIBUTORS.md was modified in PR
-      #   id: check_contributors_modified
-      #   shell: bash
-      #   env:
-      #     # This token is safely scoped to job-level permissions
-      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     if [ "$merge_ref_defined" = "false" ]; then
-      #       echo "::warning::Merge conflicts mean the check for modification of a signed CONTRIBUTORS.md file was not completed. Allowing this to pass while conflict exists."
-      #       echo "modified=false" >> "$GITHUB_OUTPUT"
-      #     else
-      #       # Call GitHub Files API directly to check PR modifications without
-      #       # running local network git fetches
-      #       # Filtering precisely for the CONTRIBUTORS.md file signature
-      #       has_modification=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" --paginate --jq '.[].filename' 2>/dev/null | grep -E '^CONTRIBUTORS\.md$' || true)
-
-      #       if [ -n "$has_modification" ]; then
-      #         echo "modified=true" >> "$GITHUB_OUTPUT"
-      #         echo "📝 CONTRIBUTORS.md file was modified in this PR."
-      #       else
-      #         echo "modified=false" >> "$GITHUB_OUTPUT"
-      #         echo "ℹ️ CONTRIBUTORS.md file was NOT modified in this PR."
-      #       fi
-      #     fi
 
       # -- Manage PR Labels, Comments, and Final Status (Consolidated)
       - name: Manage CLA Status, Labels, and Comments

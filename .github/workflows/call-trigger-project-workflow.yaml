@@ -20,4 +20,3 @@ jobs:
       contents: read  # Required for checking out code or referencing internal workflow actions
       pull-requests: write  # Required to modify or comment on pull requests within this pipeline process
     uses: MetOffice/growss/.github/workflows/trigger-project-workflow.yaml@main
-    # secrets: inherit
