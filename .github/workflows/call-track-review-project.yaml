@@ -23,7 +23,6 @@ jobs:
       (
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.conclusion == 'success'
       )
     # Granular permissions are safely locked directly to this specific execution context
@@ -31,7 +30,8 @@ jobs:
       actions: read  # Required to view the status of the upstream triggered workflow run
       repository-projects: write  # Required to add or mutate tasks inside GitHub Project 376
     uses: MetOffice/growss/.github/workflows/track-review-project.yaml@main
-    secrets: inherit
+    secrets:
+      PROJECT_ACTION_PAT: ${{ secrets.PROJECT_ACTION_PAT }}
     # Optional inputs (with default values)
     with:
       runner: "ubuntu-24.04"
