@@ -80,6 +80,7 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr_branch
+          allow-unsafe-pr-checkout: true  # allow checking out PR head refs from forks
 
       - name: Determine if contributor exists in PR branch
         id: check_contributor_pr
@@ -129,6 +130,7 @@ jobs:
           persist-credentials: false
           ref: "refs/pull/${{ github.event.number }}/merge"
           path: merge_branch
+          allow-unsafe-pr-checkout: true  # allow checking out PR head refs from forks
 
       - name: Check if CONTRIBUTORS.md was modified in PR
         id: check_contributors_modified
