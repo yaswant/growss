@@ -37,7 +37,7 @@ changelog:
         - "feature"
 
     # (science) Domain-specific mathematical changes or model updates.
-    # (technical) Deep algorithmic optimizations or background logic shifts.
+    # (technical) Deep algorithmic optimisations or background logic shifts.
     - title: "🔬 Scientific & Algorithmic Updates"
       labels:
         - "science"
